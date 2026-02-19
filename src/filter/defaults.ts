@@ -1,0 +1,25 @@
+export const DEFAULT_IGNORE_PATTERNS = `# Lock files
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+Gemfile.lock
+poetry.lock
+Cargo.lock
+composer.lock
+
+# Auto-generated
+*.generated.*
+*.min.js
+*.min.css
+*.map
+
+# Build outputs (if git-tracked)
+dist/
+build/
+.next/
+
+# Config that rarely needs understanding
+.eslintrc*
+.prettierrc*
+tsconfig.json
+`;

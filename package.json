@@ -1,0 +1,50 @@
+{
+  "name": "gitfamiliar",
+  "version": "0.1.0",
+  "description": "Visualize your code familiarity from Git history",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "bin": {
+    "gitfamiliar": "./dist/bin/gitfamiliar.js"
+  },
+  "files": [
+    "dist",
+    "templates"
+  ],
+  "scripts": {
+    "build": "tsup && node -e \"const fs=require('fs');const f='dist/bin/gitfamiliar.js';const c=fs.readFileSync(f,'utf8');if(!c.startsWith('#!'))fs.writeFileSync(f,'#!/usr/bin/env node\\n'+c)\"",
+    "dev": "tsup --watch",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "lint": "eslint src/",
+    "typecheck": "tsc --noEmit",
+    "prepublishOnly": "npm run build && npm run test"
+  },
+  "keywords": [
+    "git",
+    "familiarity",
+    "onboarding",
+    "code-coverage",
+    "developer-tools",
+    "cli"
+  ],
+  "author": "",
+  "license": "MIT",
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "chalk": "^5.3.0",
+    "commander": "^12.1.0",
+    "ignore": "^5.3.1",
+    "open": "^10.1.0",
+    "simple-git": "^3.25.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.0",
+    "tsup": "^8.1.0",
+    "typescript": "^5.5.0",
+    "vitest": "^1.6.0"
+  }
+}
