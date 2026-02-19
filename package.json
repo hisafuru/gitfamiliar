@@ -27,10 +27,21 @@
     "onboarding",
     "code-coverage",
     "developer-tools",
-    "cli"
+    "cli",
+    "code-analysis",
+    "git-blame",
+    "treemap"
   ],
   "author": "",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kuze/gitfamiliar.git"
+  },
+  "homepage": "https://github.com/kuze/gitfamiliar#readme",
+  "bugs": {
+    "url": "https://github.com/kuze/gitfamiliar/issues"
+  },
   "engines": {
     "node": ">=18"
   },
