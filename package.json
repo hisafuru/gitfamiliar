@@ -1,6 +1,6 @@
 {
   "name": "gitfamiliar",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Visualize your code familiarity from Git history",
   "type": "module",
   "main": "./dist/index.js",
@@ -13,7 +13,7 @@
     "templates"
   ],
   "scripts": {
-    "build": "tsup && node -e \"const fs=require('fs');const f='dist/bin/gitfamiliar.js';const c=fs.readFileSync(f,'utf8');if(!c.startsWith('#!'))fs.writeFileSync(f,'#!/usr/bin/env node\\n'+c)\"",
+    "build": "tsup && node -e \"const fs=require('fs');const f='dist/bin/gitfamiliar.js';const c=fs.readFileSync(f,'utf8');if(!c.startsWith('#!'))fs.writeFileSync(f,'#!/usr/bin/env node\\n'+c)\" && chmod +x dist/bin/gitfamiliar.js",
     "dev": "tsup --watch",
     "test": "vitest run",
     "test:watch": "vitest",
