@@ -1,5 +1,5 @@
-import type { GitClient } from './client.js';
-import type { UserIdentity } from '../core/types.js';
+import type { GitClient } from "./client.js";
+import type { UserIdentity } from "../core/types.js";
 
 export async function resolveUser(
   gitClient: GitClient,
@@ -7,7 +7,7 @@ export async function resolveUser(
 ): Promise<UserIdentity> {
   if (userFlag) {
     // If it looks like an email, use it as email; otherwise as name
-    if (userFlag.includes('@')) {
+    if (userFlag.includes("@")) {
       return { name: userFlag, email: userFlag };
     }
     return { name: userFlag, email: userFlag };
@@ -18,11 +18,18 @@ export async function resolveUser(
 
   if (!name && !email) {
     throw new Error(
-      'Could not determine git user. Set git config user.name/user.email or use --user flag.',
+      "Could not determine git user. Set git config user.name/user.email or use --user flag.",
     );
   }
 
   return { name, email };
+}
+
+/**
+ * Build git --author args for a user identity.
+ */
+export function getAuthorArgs(user: UserIdentity): string[] {
+  return ["--author", user.email || user.name];
 }
 
 export function matchesUser(

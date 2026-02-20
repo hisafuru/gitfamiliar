@@ -1,6 +1,6 @@
-import type { GitClient } from './client.js';
-import type { UserIdentity, CommitInfo } from '../core/types.js';
-import { matchesUser } from './identity.js';
+import type { GitClient } from "./client.js";
+import type { UserIdentity, CommitInfo } from "../core/types.js";
+import { getAuthorArgs } from "./identity.js";
 
 /**
  * Get the set of files that a user has committed to (any commit, any time).
@@ -12,24 +12,24 @@ export async function getFilesCommittedByUser(
 ): Promise<Set<string>> {
   const files = new Set<string>();
 
-  // Get commits by the user's email and name
-  const queries = [];
+  // Query by both email and name to catch alias mismatches
+  const queries: string[][] = [];
   if (user.email) {
-    queries.push(['--author', user.email]);
+    queries.push(["--author", user.email]);
   }
   if (user.name && user.name !== user.email) {
-    queries.push(['--author', user.name]);
+    queries.push(["--author", user.name]);
   }
 
   for (const authorArgs of queries) {
     try {
       const output = await gitClient.getLog([
         ...authorArgs,
-        '--name-only',
-        '--pretty=format:',
-        '--all',
+        "--name-only",
+        "--pretty=format:",
+        "--all",
       ]);
-      for (const line of output.split('\n')) {
+      for (const line of output.split("\n")) {
         const trimmed = line.trim();
         if (trimmed) {
           files.add(trimmed);
@@ -54,40 +54,40 @@ export async function getDetailedCommits(
 ): Promise<CommitInfo[]> {
   const commits: CommitInfo[] = [];
 
-  const authorArgs = user.email ? ['--author', user.email] : ['--author', user.name];
-
   try {
     const output = await gitClient.getLog([
-      ...authorArgs,
-      '--numstat',
-      '--pretty=format:%H|%aI',
-      '--',
+      ...getAuthorArgs(user),
+      "--numstat",
+      "--pretty=format:%H|%aI",
+      "--",
       filePath,
     ]);
 
-    const lines = output.trim().split('\n');
-    let currentHash = '';
+    const lines = output.trim().split("\n");
+    let currentHash = "";
     let currentDate = new Date();
 
     for (const line of lines) {
       const trimmed = line.trim();
       if (!trimmed) continue;
 
-      if (trimmed.includes('|')) {
-        const parts = trimmed.split('|');
+      if (trimmed.includes("|")) {
+        const parts = trimmed.split("|");
         currentHash = parts[0];
         currentDate = new Date(parts[1]);
       } else {
         const statMatch = trimmed.match(/^(\d+|-)\t(\d+|-)\t(.+)$/);
         if (statMatch && statMatch[3] === filePath) {
-          const added = statMatch[1] === '-' ? 0 : parseInt(statMatch[1], 10);
-          const deleted = statMatch[2] === '-' ? 0 : parseInt(statMatch[2], 10);
+          const added = statMatch[1] === "-" ? 0 : parseInt(statMatch[1], 10);
+          const deleted = statMatch[2] === "-" ? 0 : parseInt(statMatch[2], 10);
 
           // Get file size at that commit
           let fileSizeAtCommit = 1;
           try {
-            const content = await gitClient.show([`${currentHash}:${filePath}`]);
-            fileSizeAtCommit = Math.max(1, content.split('\n').length);
+            const content = await gitClient.show([
+              `${currentHash}:${filePath}`,
+            ]);
+            fileSizeAtCommit = Math.max(1, content.split("\n").length);
           } catch {
             fileSizeAtCommit = Math.max(1, added);
           }
@@ -117,14 +117,12 @@ export async function getLastCommitDate(
   user: UserIdentity,
   filePath: string,
 ): Promise<Date | null> {
-  const authorArgs = user.email ? ['--author', user.email] : ['--author', user.name];
-
   try {
     const output = await gitClient.getLog([
-      ...authorArgs,
-      '-1',
-      '--pretty=format:%aI',
-      '--',
+      ...getAuthorArgs(user),
+      "-1",
+      "--pretty=format:%aI",
+      "--",
       filePath,
     ]);
     const trimmed = output.trim();

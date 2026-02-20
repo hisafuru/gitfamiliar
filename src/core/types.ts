@@ -1,17 +1,21 @@
-export type ScoringMode = 'binary' | 'authorship' | 'review-coverage' | 'weighted';
-export type FilterMode = 'all' | 'written' | 'reviewed';
-export type ExpirationPolicyType = 'never' | 'time' | 'change' | 'combined';
+export type ScoringMode =
+  | "binary"
+  | "authorship"
+  | "review-coverage"
+  | "weighted";
+export type FilterMode = "all" | "written" | "reviewed";
+export type ExpirationPolicyType = "never" | "time" | "change" | "combined";
 
 export interface ExpirationConfig {
   policy: ExpirationPolicyType;
-  duration?: number;   // days
-  threshold?: number;  // 0-1 (e.g., 0.5 for 50%)
+  duration?: number; // days
+  threshold?: number; // 0-1 (e.g., 0.5 for 50%)
 }
 
 export interface WeightConfig {
-  blame: number;   // default 0.5
-  commit: number;  // default 0.35
-  review: number;  // default 0.15
+  blame: number; // default 0.5
+  commit: number; // default 0.35
+  review: number; // default 0.15
 }
 
 export interface CliOptions {
@@ -30,7 +34,7 @@ export interface UserIdentity {
 }
 
 export interface FileScore {
-  type: 'file';
+  type: "file";
   path: string;
   lines: number;
   score: number;
@@ -39,12 +43,12 @@ export interface FileScore {
   blameScore?: number;
   commitScore?: number;
   reviewScore?: number;
-  expired?: boolean;
+  isExpired?: boolean;
   lastTouchDate?: Date;
 }
 
 export interface FolderScore {
-  type: 'folder';
+  type: "folder";
   path: string;
   lines: number;
   score: number;
@@ -65,7 +69,7 @@ export interface CommitInfo {
 
 export interface ReviewInfo {
   date: Date;
-  type: 'approved' | 'commented' | 'changes_requested';
+  type: "approved" | "commented" | "changes_requested";
   filesInPR: number;
 }
 
@@ -76,5 +80,5 @@ export const DEFAULT_WEIGHTS: WeightConfig = {
 };
 
 export const DEFAULT_EXPIRATION: ExpirationConfig = {
-  policy: 'never',
+  policy: "never",
 };

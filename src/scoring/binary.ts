@@ -1,5 +1,5 @@
-import type { FolderScore, FilterMode } from '../core/types.js';
-import { walkFiles, recomputeFolderScores } from '../core/file-tree.js';
+import type { FolderScore, FilterMode } from "../core/types.js";
+import { walkFiles, recomputeFolderScores } from "../core/file-tree.js";
 
 /**
  * Score files in binary mode (read / not read).
@@ -13,12 +13,13 @@ export function scoreBinary(
 ): void {
   walkFiles(tree, (file) => {
     const isWritten = writtenFiles.has(file.path);
-    const isReviewed = reviewedFiles.has(file.path) && !writtenFiles.has(file.path);
+    const isReviewed =
+      reviewedFiles.has(file.path) && !writtenFiles.has(file.path);
     const isExpired = expiredFiles?.has(file.path) ?? false;
 
     file.isWritten = isWritten;
     file.isReviewed = isReviewed;
-    file.expired = isExpired;
+    file.isExpired = isExpired;
 
     if (isExpired) {
       file.score = 0;
@@ -26,18 +27,18 @@ export function scoreBinary(
     }
 
     switch (filterMode) {
-      case 'written':
+      case "written":
         file.score = isWritten ? 1 : 0;
         break;
-      case 'reviewed':
+      case "reviewed":
         file.score = isReviewed ? 1 : 0;
         break;
-      case 'all':
+      case "all":
       default:
-        file.score = (isWritten || isReviewed) ? 1 : 0;
+        file.score = isWritten || isReviewed ? 1 : 0;
         break;
     }
   });
 
-  recomputeFolderScores(tree, 'binary');
+  recomputeFolderScores(tree, "binary");
 }
