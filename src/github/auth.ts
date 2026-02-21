@@ -10,19 +10,29 @@ export function resolveGitHubToken(hostname?: string): string | null {
   if (process.env.GITHUB_TOKEN) return process.env.GITHUB_TOKEN;
   if (process.env.GH_TOKEN) return process.env.GH_TOKEN;
 
-  // Try gh CLI (with optional hostname for GHE)
+  // Try gh CLI (always pass --hostname for explicit host resolution)
   try {
-    const cmd =
-      hostname && hostname !== "github.com"
-        ? `gh auth token --hostname ${hostname}`
-        : "gh auth token";
-    const token = execSync(cmd, {
+    const host = hostname || "github.com";
+    const token = execSync(`gh auth token --hostname ${host}`, {
       encoding: "utf-8",
       stdio: ["pipe", "pipe", "pipe"],
     }).trim();
     if (token) return token;
   } catch {
-    // gh CLI not available or not authenticated
+    // gh CLI not available or not authenticated for this hostname
+  }
+
+  // Fallback: try gh auth token without --hostname (uses default host)
+  if (hostname && hostname !== "github.com") {
+    try {
+      const token = execSync("gh auth token", {
+        encoding: "utf-8",
+        stdio: ["pipe", "pipe", "pipe"],
+      }).trim();
+      if (token) return token;
+    } catch {
+      // gh CLI not available or not authenticated
+    }
   }
 
   return null;

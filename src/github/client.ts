@@ -75,16 +75,26 @@ export class GitHubClient {
       hostname = match[1];
       owner = match[2];
       repo = match[3];
+    } else if (
+      // SSH URL format: ssh://git@hostname(:port)?/owner/repo.git
+      (match = url.match(
+        /ssh:\/\/[^@]+@([^:/]+)(?::\d+)?\/([^/]+)\/([^/.]+?)(\.git)?$/,
+      ))
+    ) {
+      hostname = match[1];
+      owner = match[2];
+      repo = match[3];
+    } else if (
+      // HTTPS format: https://hostname(:port)?/owner/repo.git
+      (match = url.match(
+        /https?:\/\/([^/:]+)(?::\d+)?\/([^/]+)\/([^/.]+?)(\.git)?$/,
+      ))
+    ) {
+      hostname = match[1];
+      owner = match[2];
+      repo = match[3];
     } else {
-      // HTTPS format: https://hostname/owner/repo.git
-      match = url.match(/https?:\/\/([^/]+)\/([^/]+)\/([^/.]+?)(\.git)?$/);
-      if (match) {
-        hostname = match[1];
-        owner = match[2];
-        repo = match[3];
-      } else {
-        return null;
-      }
+      return null;
     }
 
     if (overrideHostname) {

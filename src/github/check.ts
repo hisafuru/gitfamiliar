@@ -35,10 +35,18 @@ export async function checkGitHubConnection(
   console.log(`API Base URL: ${parsed.apiBaseUrl}`);
 
   // 3. Resolve token
+  console.log(`\nResolving token for hostname: ${parsed.hostname}`);
   const token = resolveGitHubToken(parsed.hostname);
   if (!token) {
     console.error(
-      "\nNo GitHub token found. Please set GITHUB_TOKEN or run: gh auth login" +
+      `No GitHub token found.\n` +
+        `Tried:\n` +
+        `  1. Environment variables: GITHUB_TOKEN, GH_TOKEN\n` +
+        `  2. gh auth token --hostname ${parsed.hostname}\n` +
+        (parsed.hostname !== "github.com"
+          ? `  3. gh auth token (default host fallback)\n`
+          : "") +
+        `\nPlease run: gh auth login` +
         (parsed.hostname !== "github.com"
           ? ` --hostname ${parsed.hostname}`
           : ""),
@@ -52,7 +60,9 @@ export async function checkGitHubConnection(
   try {
     const client = new GitHubClient(token, parsed.apiBaseUrl);
     const user = await client.verifyConnection();
-    console.log(`Authenticated as: ${user.login}${user.name ? ` (${user.name})` : ""}`);
+    console.log(
+      `Authenticated as: ${user.login}${user.name ? ` (${user.name})` : ""}`,
+    );
     console.log("\nGitHub connection OK.");
   } catch (error: any) {
     console.error(`\nAPI connection failed: ${error.message}`);
