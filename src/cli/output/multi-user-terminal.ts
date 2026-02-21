@@ -25,11 +25,14 @@ function formatPercent(score: number): string {
 
 function getModeLabel(mode: string): string {
   switch (mode) {
-    case "binary": return "Binary mode";
-    case "authorship": return "Authorship mode";
-    case "review-coverage": return "Review Coverage mode";
-    case "weighted": return "Weighted mode";
-    default: return mode;
+    case "binary":
+      return "Binary mode";
+    case "authorship":
+      return "Authorship mode";
+    case "weighted":
+      return "Weighted mode";
+    default:
+      return mode;
   }
 }
 
@@ -92,7 +95,7 @@ export function renderMultiUserTerminal(result: MultiUserResult): void {
 
     if (mode === "binary") {
       console.log(
-        `  ${name} ${bar}  ${pct.padStart(4)} (${summary.writtenCount + summary.reviewedCount}/${totalFiles} files)`,
+        `  ${name} ${bar}  ${pct.padStart(4)} (${summary.writtenCount}/${totalFiles} files)`,
       );
     } else {
       console.log(`  ${name} ${bar}  ${pct.padStart(4)}`);
@@ -105,9 +108,7 @@ export function renderMultiUserTerminal(result: MultiUserResult): void {
   const headerNames = userSummaries
     .map((s) => truncateName(s.user.name, 7).padStart(7))
     .join("  ");
-  console.log(
-    chalk.bold("Folders:") + " ".repeat(nameWidth - 4) + headerNames,
-  );
+  console.log(chalk.bold("Folders:") + " ".repeat(nameWidth - 4) + headerNames);
 
   const folderLines = renderFolder(tree, 1, 2, nameWidth);
   for (const line of folderLines) {

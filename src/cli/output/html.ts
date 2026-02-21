@@ -41,28 +41,7 @@ function generateTreemapHTML(result: FamiliarityResult): string {
   #breadcrumb span { cursor: pointer; color: #5eadf7; }
   #breadcrumb span:hover { text-decoration: underline; }
   #breadcrumb .sep { color: #666; margin: 0 4px; }
-  #controls {
-    padding: 8px 24px;
-    background: #16213e;
-    border-bottom: 1px solid #0f3460;
-    display: flex;
-    gap: 12px;
-    align-items: center;
-  }
-  #controls button {
-    padding: 4px 12px;
-    border: 1px solid #0f3460;
-    background: #1a1a2e;
-    color: #e0e0e0;
-    border-radius: 4px;
-    cursor: pointer;
-    font-size: 12px;
-  }
-  #controls button.active {
-    background: #e94560;
-    border-color: #e94560;
-    color: white;
-  }
+
   #treemap { width: 100%; }
   #tooltip {
     position: absolute;
@@ -103,17 +82,7 @@ function generateTreemapHTML(result: FamiliarityResult): string {
   <div class="info">${mode.charAt(0).toUpperCase() + mode.slice(1)} mode | ${result.totalFiles} files</div>
 </div>
 <div id="breadcrumb"><span onclick="zoomTo('')">root</span></div>
-${
-  mode === "binary" && result.hasReviewData
-    ? `
-<div id="controls">
-  <span style="font-size:12px;color:#888;">Filter:</span>
-  <button class="active" onclick="setFilter('all')">All</button>
-  <button onclick="setFilter('written')">Written only</button>
-  <button onclick="setFilter('reviewed')">Reviewed only</button>
-</div>`
-    : ""
-}
+
 <div id="treemap"></div>
 <div id="tooltip"></div>
 <div id="legend">
@@ -126,7 +95,6 @@ ${
 <script>
 const rawData = ${dataJson};
 const mode = "${mode}";
-let currentFilter = 'all';
 let currentPath = '';
 
 function scoreColor(score) {
@@ -141,9 +109,6 @@ function scoreColor(score) {
 }
 
 function getNodeScore(node) {
-  if (mode !== 'binary') return node.score;
-  if (currentFilter === 'written') return node.isWritten ? 1 : 0;
-  if (currentFilter === 'reviewed') return node.isReviewed ? 1 : 0;
   return node.score;
 }
 
@@ -183,10 +148,8 @@ function render() {
 
   const headerH = document.getElementById('header').offsetHeight;
   const breadcrumbH = document.getElementById('breadcrumb').offsetHeight;
-  const controlsEl = document.getElementById('controls');
-  const controlsH = controlsEl ? controlsEl.offsetHeight : 0;
   const width = window.innerWidth;
-  const height = window.innerHeight - headerH - breadcrumbH - controlsH;
+  const height = window.innerHeight - headerH - breadcrumbH;
 
   const targetNode = currentPath ? findNode(rawData, currentPath) : rawData;
   if (!targetNode) return;
@@ -293,9 +256,7 @@ function showTooltip(data, event) {
   if (data.commitScore !== undefined) {
     html += '<br>Commit: ' + Math.round(data.commitScore * 100) + '%';
   }
-  if (data.reviewScore !== undefined) {
-    html += '<br>Review: ' + Math.round(data.reviewScore * 100) + '%';
-  }
+
   if (data.isExpired) {
     html += '<br><span style="color:#e94560">Expired</span>';
   }
@@ -322,14 +283,6 @@ function updateBreadcrumb() {
     html += \`<span class="sep">/</span><span onclick="zoomTo('\${p}')">\${part}</span>\`;
   }
   el.innerHTML = html;
-}
-
-function setFilter(f) {
-  currentFilter = f;
-  document.querySelectorAll('#controls button').forEach(btn => {
-    btn.classList.toggle('active', btn.textContent.toLowerCase().includes(f));
-  });
-  render();
 }
 
 window.addEventListener('resize', render);

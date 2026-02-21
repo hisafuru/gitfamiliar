@@ -1,4 +1,4 @@
-import type { CliOptions, FolderScore, ReviewInfo } from "./types.js";
+import type { CliOptions, FolderScore } from "./types.js";
 import { GitClient } from "../git/client.js";
 import { resolveUser } from "../git/identity.js";
 import { createFilter } from "../filter/ignore.js";
@@ -6,10 +6,8 @@ import { buildFileTree, walkFiles } from "./file-tree.js";
 import { getFilesCommittedByUser } from "../git/log.js";
 import { scoreBinary } from "../scoring/binary.js";
 import { scoreAuthorship } from "../scoring/authorship.js";
-import { scoreReviewCoverage } from "../scoring/review-coverage.js";
 import { scoreWeighted } from "../scoring/weighted.js";
 import { getExpiredFiles } from "../scoring/expiration.js";
-import { fetchReviewData } from "../github/reviews.js";
 
 export interface FamiliarityResult {
   tree: FolderScore;
@@ -17,10 +15,7 @@ export interface FamiliarityResult {
   userName: string;
   mode: string;
   writtenCount: number;
-  reviewedCount: number;
-  bothCount: number;
   totalFiles: number;
-  hasReviewData: boolean;
 }
 
 export async function computeFamiliarity(
@@ -42,22 +37,6 @@ export async function computeFamiliarity(
   // Get written files (used by binary, weighted)
   const writtenFiles = await getFilesCommittedByUser(gitClient, user);
 
-  // Get review data (if available)
-  let reviewData: Map<string, ReviewInfo[]> | undefined;
-  let reviewedFileSet = new Set<string>();
-
-  if (options.mode !== "authorship") {
-    const reviewResult = await fetchReviewData(
-      gitClient,
-      userFlag,
-      options.githubUrl,
-    );
-    if (reviewResult) {
-      reviewData = reviewResult.reviewedFiles;
-      reviewedFileSet = reviewResult.reviewedFileSet;
-    }
-  }
-
   // Get expired files
   let expiredFiles: Set<string> | undefined;
   if (options.expiration.policy !== "never") {
@@ -74,30 +53,15 @@ export async function computeFamiliarity(
   // Score based on mode
   switch (options.mode) {
     case "binary":
-      scoreBinary(
-        tree,
-        writtenFiles,
-        reviewedFileSet,
-        options.filter,
-        expiredFiles,
-      );
+      scoreBinary(tree, writtenFiles, expiredFiles);
       break;
 
     case "authorship":
       await scoreAuthorship(tree, gitClient, user);
       break;
 
-    case "review-coverage":
-      if (reviewedFileSet.size === 0) {
-        console.error(
-          "Warning: No review data available. Set GITHUB_TOKEN or use --user with your GitHub username.",
-        );
-      }
-      scoreReviewCoverage(tree, reviewedFileSet);
-      break;
-
     case "weighted":
-      await scoreWeighted(tree, gitClient, user, options.weights, reviewData);
+      await scoreWeighted(tree, gitClient, user, options.weights);
       break;
   }
 
@@ -106,32 +70,15 @@ export async function computeFamiliarity(
     repoName,
     userName: user.name || user.email,
     mode: options.mode,
-    ...computeSummary(tree, writtenFiles, reviewedFileSet),
+    writtenCount: countWritten(tree, writtenFiles),
     totalFiles: tree.fileCount,
-    hasReviewData: reviewedFileSet.size > 0,
   };
 }
 
-function computeSummary(
-  tree: FolderScore,
-  writtenFiles: Set<string>,
-  reviewedFileSet: Set<string>,
-): { writtenCount: number; reviewedCount: number; bothCount: number } {
-  let writtenOnly = 0;
-  let reviewedOnly = 0;
-  let both = 0;
-
+function countWritten(tree: FolderScore, writtenFiles: Set<string>): number {
+  let count = 0;
   walkFiles(tree, (file) => {
-    const w = writtenFiles.has(file.path);
-    const r = reviewedFileSet.has(file.path);
-    if (w && r) both++;
-    else if (w) writtenOnly++;
-    else if (r) reviewedOnly++;
+    if (writtenFiles.has(file.path)) count++;
   });
-
-  return {
-    writtenCount: writtenOnly + both,
-    reviewedCount: reviewedOnly + both,
-    bothCount: both,
-  };
+  return count;
 }

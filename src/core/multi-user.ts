@@ -79,7 +79,6 @@ export async function computeMultiUser(
   const userSummaries: UserSummary[] = results.map((r) => ({
     user: { name: r.result.userName, email: "" },
     writtenCount: r.result.writtenCount,
-    reviewedCount: r.result.reviewedCount,
     overallScore: r.result.tree.score,
   }));
 
@@ -125,7 +124,6 @@ function mergeResults(
         user: { name: userName, email: "" },
         score: file.score,
         isWritten: file.isWritten,
-        isReviewed: file.isReviewed,
       });
     });
   }

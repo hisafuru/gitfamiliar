@@ -1,9 +1,4 @@
-export type ScoringMode =
-  | "binary"
-  | "authorship"
-  | "review-coverage"
-  | "weighted";
-export type FilterMode = "all" | "written" | "reviewed";
+export type ScoringMode = "binary" | "authorship" | "weighted";
 export type ExpirationPolicyType = "never" | "time" | "change" | "combined";
 
 export interface ExpirationConfig {
@@ -14,8 +9,7 @@ export interface ExpirationConfig {
 
 export interface WeightConfig {
   blame: number; // default 0.5
-  commit: number; // default 0.35
-  review: number; // default 0.15
+  commit: number; // default 0.5
 }
 
 export type HotspotMode = "personal" | "team";
@@ -24,7 +18,6 @@ export type HotspotRiskLevel = "critical" | "high" | "medium" | "low";
 export interface CliOptions {
   mode: ScoringMode;
   user?: string | string[];
-  filter: FilterMode;
   expiration: ExpirationConfig;
   html: boolean;
   weights: WeightConfig;
@@ -33,8 +26,6 @@ export interface CliOptions {
   teamCoverage?: boolean;
   hotspot?: HotspotMode;
   window?: number; // days for hotspot analysis
-  githubUrl?: string; // GitHub Enterprise hostname override
-  checkGithub?: boolean; // verify GitHub connectivity
 }
 
 export interface UserIdentity {
@@ -48,10 +39,8 @@ export interface FileScore {
   lines: number;
   score: number;
   isWritten?: boolean;
-  isReviewed?: boolean;
   blameScore?: number;
   commitScore?: number;
-  reviewScore?: number;
   isExpired?: boolean;
   lastTouchDate?: Date;
 }
@@ -76,16 +65,9 @@ export interface CommitInfo {
   fileSizeAtCommit: number;
 }
 
-export interface ReviewInfo {
-  date: Date;
-  type: "approved" | "commented" | "changes_requested";
-  filesInPR: number;
-}
-
 export const DEFAULT_WEIGHTS: WeightConfig = {
   blame: 0.5,
-  commit: 0.35,
-  review: 0.15,
+  commit: 0.5,
 };
 
 export const DEFAULT_EXPIRATION: ExpirationConfig = {
@@ -100,7 +82,6 @@ export interface UserScore {
   user: UserIdentity;
   score: number;
   isWritten?: boolean;
-  isReviewed?: boolean;
 }
 
 export interface MultiUserFileScore {
@@ -126,7 +107,6 @@ export type MultiUserTreeNode = MultiUserFileScore | MultiUserFolderScore;
 export interface UserSummary {
   user: UserIdentity;
   writtenCount: number;
-  reviewedCount: number;
   overallScore: number;
 }
 
@@ -170,24 +150,6 @@ export interface TeamCoverageResult {
   totalFiles: number;
   riskFiles: CoverageFileScore[];
   overallBusFactor: number;
-}
-
-// ── CI / PR Analysis Types ──
-
-export interface ReviewerSuggestion {
-  user: UserIdentity;
-  relevantFiles: string[];
-  avgFamiliarity: number;
-}
-
-export interface PRAnalysisResult {
-  prNumber: number;
-  author: string;
-  changedFiles: string[];
-  familiarityScores: Map<string, number>;
-  unfamiliarFiles: string[];
-  suggestedReviewers: ReviewerSuggestion[];
-  riskLevel: RiskLevel;
 }
 
 // ── Hotspot Analysis Types ──

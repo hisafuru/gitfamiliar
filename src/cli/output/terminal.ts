@@ -27,8 +27,6 @@ function getModeLabel(mode: string): string {
       return "Binary mode";
     case "authorship":
       return "Authorship mode";
-    case "review-coverage":
-      return "Review Coverage mode";
     case "weighted":
       return "Weighted mode";
     default:
@@ -107,14 +105,8 @@ export function renderTerminal(result: FamiliarityResult): void {
   console.log("");
 
   if (mode === "binary") {
-    const { writtenCount, reviewedCount, bothCount, hasReviewData } = result;
-    if (hasReviewData) {
-      console.log(
-        `Written: ${writtenCount} files | Reviewed: ${reviewedCount} files | Both: ${bothCount} files`,
-      );
-    } else {
-      console.log(`Written: ${writtenCount} files (review data not available)`);
-    }
+    const { writtenCount } = result;
+    console.log(`Written: ${writtenCount} files`);
     console.log("");
   }
 }

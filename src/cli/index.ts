@@ -12,7 +12,6 @@ import { generateAndOpenMultiUserHTML } from "./output/multi-user-html.js";
 import { computeHotspots } from "../core/hotspot.js";
 import { renderHotspotTerminal } from "./output/hotspot-terminal.js";
 import { generateAndOpenHotspotHTML } from "./output/hotspot-html.js";
-import { checkGitHubConnection } from "../github/check.js";
 
 function collect(value: string, previous: string[]): string[] {
   return previous.concat([value]);
@@ -27,7 +26,7 @@ export function createProgram(): Command {
     .version("0.1.1")
     .option(
       "-m, --mode <mode>",
-      "Scoring mode: binary, authorship, review-coverage, weighted",
+      "Scoring mode: binary, authorship, weighted",
       "binary",
     )
     .option(
@@ -37,11 +36,6 @@ export function createProgram(): Command {
       [],
     )
     .option(
-      "-f, --filter <filter>",
-      "Filter mode: all, written, reviewed",
-      "all",
-    )
-    .option(
       "-e, --expiration <policy>",
       "Expiration policy: never, time:180d, change:50%, combined:365d:50%",
       "never",
@@ -49,7 +43,7 @@ export function createProgram(): Command {
     .option("--html", "Generate HTML treemap report", false)
     .option(
       "-w, --weights <weights>",
-      'Weights for weighted mode: blame,commit,review (e.g., "0.5,0.35,0.15")',
+      'Weights for weighted mode: blame,commit (e.g., "0.5,0.5")',
     )
     .option("--team", "Compare all contributors", false)
     .option(
@@ -62,25 +56,10 @@ export function createProgram(): Command {
       "--window <days>",
       "Time window for hotspot analysis in days (default: 90)",
     )
-    .option(
-      "--github-url <hostname>",
-      "GitHub Enterprise hostname (e.g. ghe.example.com). Auto-detected from git remote if omitted.",
-    )
-    .option(
-      "--check-github",
-      "Verify GitHub API connectivity and show connection info",
-      false,
-    )
     .action(async (rawOptions) => {
       try {
         const repoPath = process.cwd();
         const options = parseOptions(rawOptions, repoPath);
-
-        // Route: check GitHub connectivity
-        if (options.checkGithub) {
-          await checkGitHubConnection(repoPath, options.githubUrl);
-          return;
-        }
 
         // Route: hotspot analysis
         if (options.hotspot) {
@@ -120,25 +99,6 @@ export function createProgram(): Command {
 
         // Route: single user (existing flow)
         const result = await computeFamiliarity(options);
-
-        // Block review-dependent modes/filters when no review data
-        if (!result.hasReviewData) {
-          if (options.mode === "review-coverage") {
-            console.error(
-              "Error: --mode review-coverage requires review data, but none was available.\n" +
-                "  Ensure you have a GitHub token (gh auth login) and have reviewed PRs in this repo.",
-            );
-            process.exit(1);
-          }
-          if (options.filter === "reviewed") {
-            console.error(
-              "Error: --filter reviewed requires review data, but none was available.\n" +
-                "  Ensure you have a GitHub token (gh auth login) and have reviewed PRs in this repo.",
-            );
-            process.exit(1);
-          }
-        }
-
         if (options.html) {
           await generateAndOpenHTML(result, repoPath);
         } else {
