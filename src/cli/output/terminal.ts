@@ -34,6 +34,8 @@ function getModeLabel(mode: string): string {
   }
 }
 
+const NAME_COLUMN_WIDTH = 24; // total width for indent + folder name
+
 function renderFolder(
   node: FolderScore,
   indent: number,
@@ -42,6 +44,7 @@ function renderFolder(
 ): string[] {
   const lines: string[] = [];
   const prefix = "  ".repeat(indent);
+  const prefixWidth = indent * 2;
 
   // Sort children: folders first, then files, by name
   const sorted = [...node.children].sort((a, b) => {
@@ -55,15 +58,20 @@ function renderFolder(
       const name = folder.path.split("/").pop() + "/";
       const bar = makeBar(folder.score);
       const pct = formatPercent(folder.score);
+      const padWidth = Math.max(
+        1,
+        NAME_COLUMN_WIDTH - prefixWidth - name.length,
+      );
+      const padding = " ".repeat(padWidth);
 
       if (mode === "binary") {
         const readCount = folder.readCount || 0;
         lines.push(
-          `${prefix}${chalk.bold(name.padEnd(16))} ${bar}  ${pct.padStart(4)} (${readCount}/${folder.fileCount} files)`,
+          `${prefix}${chalk.bold(name)}${padding} ${bar}  ${pct.padStart(4)} (${readCount}/${folder.fileCount} files)`,
         );
       } else {
         lines.push(
-          `${prefix}${chalk.bold(name.padEnd(16))} ${bar}  ${pct.padStart(4)}`,
+          `${prefix}${chalk.bold(name)}${padding} ${bar}  ${pct.padStart(4)}`,
         );
       }
 

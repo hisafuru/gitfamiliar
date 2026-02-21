@@ -152,6 +152,32 @@ export interface TeamCoverageResult {
   overallBusFactor: number;
 }
 
+// ── Unified Dashboard Types ──
+
+export interface UnifiedData {
+  repoName: string;
+  userName: string;
+  scoring: {
+    binary: FamiliarityResult;
+    authorship: FamiliarityResult;
+    weighted: FamiliarityResult;
+  };
+  coverage: TeamCoverageResult;
+  hotspot: HotspotResult;
+  multiUser: MultiUserResult;
+}
+
+// FamiliarityResult is defined in familiarity.ts but we need a forward reference
+// for UnifiedData. The actual type is re-exported from familiarity.ts.
+export interface FamiliarityResult {
+  tree: FolderScore;
+  repoName: string;
+  userName: string;
+  mode: string;
+  writtenCount: number;
+  totalFiles: number;
+}
+
 // ── Hotspot Analysis Types ──
 
 export interface HotspotFileScore {

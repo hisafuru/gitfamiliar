@@ -1,4 +1,4 @@
-import type { CliOptions, FolderScore } from "./types.js";
+import type { CliOptions, FolderScore, FamiliarityResult } from "./types.js";
 import { GitClient } from "../git/client.js";
 import { resolveUser } from "../git/identity.js";
 import { createFilter } from "../filter/ignore.js";
@@ -9,14 +9,7 @@ import { scoreAuthorship } from "../scoring/authorship.js";
 import { scoreWeighted } from "../scoring/weighted.js";
 import { getExpiredFiles } from "../scoring/expiration.js";
 
-export interface FamiliarityResult {
-  tree: FolderScore;
-  repoName: string;
-  userName: string;
-  mode: string;
-  writtenCount: number;
-  totalFiles: number;
-}
+export type { FamiliarityResult };
 
 export async function computeFamiliarity(
   options: CliOptions,

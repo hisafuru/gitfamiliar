@@ -12,6 +12,8 @@ import { generateAndOpenMultiUserHTML } from "./output/multi-user-html.js";
 import { computeHotspots } from "../core/hotspot.js";
 import { renderHotspotTerminal } from "./output/hotspot-terminal.js";
 import { generateAndOpenHotspotHTML } from "./output/hotspot-html.js";
+import { computeUnified } from "../core/unified.js";
+import { generateAndOpenUnifiedHTML } from "./output/unified-html.js";
 
 function collect(value: string, previous: string[]): string[] {
   return previous.concat([value]);
@@ -60,6 +62,21 @@ export function createProgram(): Command {
       try {
         const repoPath = process.cwd();
         const options = parseOptions(rawOptions, repoPath);
+
+        // Route: unified HTML dashboard (--html without specific feature flags)
+        const isMultiUserCheck =
+          options.team ||
+          (Array.isArray(options.user) && options.user.length > 1);
+        if (
+          options.html &&
+          !options.hotspot &&
+          !options.teamCoverage &&
+          !isMultiUserCheck
+        ) {
+          const data = await computeUnified(options);
+          await generateAndOpenUnifiedHTML(data, repoPath);
+          return;
+        }
 
         // Route: hotspot analysis
         if (options.hotspot) {
