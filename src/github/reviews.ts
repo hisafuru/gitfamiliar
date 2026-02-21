@@ -18,20 +18,50 @@ export async function fetchReviewData(
   reviewedFileSet: Set<string>;
 } | null> {
   const remoteUrl = await gitClient.getRemoteUrl();
-  if (!remoteUrl) return null;
+  if (!remoteUrl) {
+    console.error(
+      "Warning: No git remote found. Review data will not be available.",
+    );
+    return null;
+  }
 
   const parsed = GitHubClient.parseRemoteUrl(remoteUrl, githubUrl);
-  if (!parsed) return null;
+  if (!parsed) {
+    console.error(
+      "Warning: Could not parse remote URL as a GitHub repository. Review data will not be available.",
+    );
+    return null;
+  }
 
   const token = resolveGitHubToken(parsed.hostname);
-  if (!token) return null;
+  if (!token) {
+    console.error(
+      `Warning: No GitHub token found for ${parsed.hostname}. Review data will not be available.\n` +
+        `  Run: gh auth login` +
+        (parsed.hostname !== "github.com"
+          ? ` --hostname ${parsed.hostname}`
+          : ""),
+    );
+    return null;
+  }
 
-  // GitHub username is required for review API queries
-  if (!username) return null;
-  const ghUsername = username;
+  const githubClient = new GitHubClient(token, parsed.apiBaseUrl);
+
+  // If no username specified, resolve from GitHub API
+  let ghUsername = username;
+  if (!ghUsername) {
+    try {
+      const user = await githubClient.verifyConnection();
+      ghUsername = user.login;
+    } catch (error: any) {
+      console.error(
+        `Warning: Could not resolve GitHub username: ${error.message}. Review data will not be available.`,
+      );
+      return null;
+    }
+  }
 
   try {
-    const githubClient = new GitHubClient(token, parsed.apiBaseUrl);
     const reviewedFiles = await githubClient.getReviewedFiles(
       parsed.owner,
       parsed.repo,
@@ -40,8 +70,15 @@ export async function fetchReviewData(
 
     const reviewedFileSet = new Set(reviewedFiles.keys());
 
+    if (reviewedFileSet.size === 0) {
+      console.error(
+        `Warning: No review data found for user "${ghUsername}" in ${parsed.owner}/${parsed.repo}.`,
+      );
+    }
+
     return { reviewedFiles, reviewedFileSet };
-  } catch {
+  } catch (error: any) {
+    console.error(`Warning: Failed to fetch review data: ${error.message}`);
     return null;
   }
 }

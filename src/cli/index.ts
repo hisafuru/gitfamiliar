@@ -120,6 +120,25 @@ export function createProgram(): Command {
 
         // Route: single user (existing flow)
         const result = await computeFamiliarity(options);
+
+        // Block review-dependent modes/filters when no review data
+        if (!result.hasReviewData) {
+          if (options.mode === "review-coverage") {
+            console.error(
+              "Error: --mode review-coverage requires review data, but none was available.\n" +
+                "  Ensure you have a GitHub token (gh auth login) and have reviewed PRs in this repo.",
+            );
+            process.exit(1);
+          }
+          if (options.filter === "reviewed") {
+            console.error(
+              "Error: --filter reviewed requires review data, but none was available.\n" +
+                "  Ensure you have a GitHub token (gh auth login) and have reviewed PRs in this repo.",
+            );
+            process.exit(1);
+          }
+        }
+
         if (options.html) {
           await generateAndOpenHTML(result, repoPath);
         } else {

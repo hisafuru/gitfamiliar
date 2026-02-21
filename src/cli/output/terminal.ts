@@ -1,10 +1,10 @@
-import chalk from 'chalk';
-import type { FamiliarityResult } from '../../core/familiarity.js';
-import type { FolderScore, FileScore, TreeNode } from '../../core/types.js';
+import chalk from "chalk";
+import type { FamiliarityResult } from "../../core/familiarity.js";
+import type { FolderScore, FileScore, TreeNode } from "../../core/types.js";
 
 const BAR_WIDTH = 10;
-const FILLED_CHAR = '\u2588'; // █
-const EMPTY_CHAR = '\u2591';  // ░
+const FILLED_CHAR = "\u2588"; // █
+const EMPTY_CHAR = "\u2591"; // ░
 
 function makeBar(score: number): string {
   const filled = Math.round(score * BAR_WIDTH);
@@ -23,11 +23,16 @@ function formatPercent(score: number): string {
 
 function getModeLabel(mode: string): string {
   switch (mode) {
-    case 'binary': return 'Binary mode';
-    case 'authorship': return 'Authorship mode';
-    case 'review-coverage': return 'Review Coverage mode';
-    case 'weighted': return 'Weighted mode';
-    default: return mode;
+    case "binary":
+      return "Binary mode";
+    case "authorship":
+      return "Authorship mode";
+    case "review-coverage":
+      return "Review Coverage mode";
+    case "weighted":
+      return "Weighted mode";
+    default:
+      return mode;
   }
 }
 
@@ -38,22 +43,22 @@ function renderFolder(
   maxDepth: number,
 ): string[] {
   const lines: string[] = [];
-  const prefix = '  '.repeat(indent);
+  const prefix = "  ".repeat(indent);
 
   // Sort children: folders first, then files, by name
   const sorted = [...node.children].sort((a, b) => {
-    if (a.type !== b.type) return a.type === 'folder' ? -1 : 1;
+    if (a.type !== b.type) return a.type === "folder" ? -1 : 1;
     return a.path.localeCompare(b.path);
   });
 
   for (const child of sorted) {
-    if (child.type === 'folder') {
+    if (child.type === "folder") {
       const folder = child as FolderScore;
-      const name = folder.path.split('/').pop() + '/';
+      const name = folder.path.split("/").pop() + "/";
       const bar = makeBar(folder.score);
       const pct = formatPercent(folder.score);
 
-      if (mode === 'binary') {
+      if (mode === "binary") {
         const readCount = folder.readCount || 0;
         lines.push(
           `${prefix}${chalk.bold(name.padEnd(16))} ${bar}  ${pct.padStart(4)} (${readCount}/${folder.fileCount} files)`,
@@ -77,11 +82,13 @@ function renderFolder(
 export function renderTerminal(result: FamiliarityResult): void {
   const { tree, repoName, mode } = result;
 
-  console.log('');
-  console.log(chalk.bold(`GitFamiliar \u2014 ${repoName} (${getModeLabel(mode)})`));
-  console.log('');
+  console.log("");
+  console.log(
+    chalk.bold(`GitFamiliar \u2014 ${repoName} (${getModeLabel(mode)})`),
+  );
+  console.log("");
 
-  if (mode === 'binary') {
+  if (mode === "binary") {
     const readCount = tree.readCount || 0;
     const pct = formatPercent(tree.score);
     console.log(`Overall: ${readCount}/${tree.fileCount} files (${pct})`);
@@ -90,20 +97,24 @@ export function renderTerminal(result: FamiliarityResult): void {
     console.log(`Overall: ${pct}`);
   }
 
-  console.log('');
+  console.log("");
 
   const folderLines = renderFolder(tree, 1, mode, 2);
   for (const line of folderLines) {
     console.log(line);
   }
 
-  console.log('');
+  console.log("");
 
-  if (mode === 'binary') {
-    const { writtenCount, reviewedCount, bothCount } = result;
-    console.log(
-      `Written: ${writtenCount} files | Reviewed: ${reviewedCount} files | Both: ${bothCount} files`,
-    );
-    console.log('');
+  if (mode === "binary") {
+    const { writtenCount, reviewedCount, bothCount, hasReviewData } = result;
+    if (hasReviewData) {
+      console.log(
+        `Written: ${writtenCount} files | Reviewed: ${reviewedCount} files | Both: ${bothCount} files`,
+      );
+    } else {
+      console.log(`Written: ${writtenCount} files (review data not available)`);
+    }
+    console.log("");
   }
 }

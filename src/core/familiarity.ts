@@ -20,6 +20,7 @@ export interface FamiliarityResult {
   reviewedCount: number;
   bothCount: number;
   totalFiles: number;
+  hasReviewData: boolean;
 }
 
 export async function computeFamiliarity(
@@ -107,6 +108,7 @@ export async function computeFamiliarity(
     mode: options.mode,
     ...computeSummary(tree, writtenFiles, reviewedFileSet),
     totalFiles: tree.fileCount,
+    hasReviewData: reviewedFileSet.size > 0,
   };
 }
 

@@ -104,7 +104,7 @@ function generateTreemapHTML(result: FamiliarityResult): string {
 </div>
 <div id="breadcrumb"><span onclick="zoomTo('')">root</span></div>
 ${
-  mode === "binary"
+  mode === "binary" && result.hasReviewData
     ? `
 <div id="controls">
   <span style="font-size:12px;color:#888;">Filter:</span>
