@@ -85,9 +85,9 @@ export class GitHubClient {
       owner = match[2];
       repo = match[3];
     } else if (
-      // HTTPS format: https://hostname(:port)?/owner/repo.git
+      // HTTPS format: https://(user:token@)?hostname(:port)?/owner/repo.git
       (match = url.match(
-        /https?:\/\/([^/:]+)(?::\d+)?\/([^/]+)\/([^/.]+?)(\.git)?$/,
+        /https?:\/\/(?:[^@]+@)?([^/:]+)(?::\d+)?\/([^/]+)\/([^/.]+?)(\.git)?$/,
       ))
     ) {
       hostname = match[1];
