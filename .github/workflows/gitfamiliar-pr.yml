@@ -1,0 +1,27 @@
+name: GitFamiliar PR Check
+
+on:
+  pull_request:
+    types: [opened, synchronize]
+
+jobs:
+  analyze:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Full history needed for git blame/log
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - run: npm ci
+      - run: npm run build
+
+      - uses: ./.github/actions/gitfamiliar
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          familiarity-threshold: 30
+          suggest-reviewers: 3
+          mode: binary

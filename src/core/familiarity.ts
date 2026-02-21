@@ -33,7 +33,8 @@ export async function computeFamiliarity(
 
   const repoRoot = await gitClient.getRepoRoot();
   const repoName = await gitClient.getRepoName();
-  const user = await resolveUser(gitClient, options.user);
+  const userFlag = Array.isArray(options.user) ? options.user[0] : options.user;
+  const user = await resolveUser(gitClient, userFlag);
   const filter = createFilter(repoRoot);
   const tree = await buildFileTree(gitClient, filter);
 
@@ -45,7 +46,7 @@ export async function computeFamiliarity(
   let reviewedFileSet = new Set<string>();
 
   if (options.mode !== "authorship") {
-    const reviewResult = await fetchReviewData(gitClient, options.user);
+    const reviewResult = await fetchReviewData(gitClient, userFlag);
     if (reviewResult) {
       reviewData = reviewResult.reviewedFiles;
       reviewedFileSet = reviewResult.reviewedFileSet;

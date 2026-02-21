@@ -1,19 +1,19 @@
 import { writeFileSync } from "node:fs";
 import { join } from "node:path";
-import type { FamiliarityResult } from "../../core/familiarity.js";
+import type { MultiUserResult } from "../../core/types.js";
 import { openBrowser } from "../../utils/open-browser.js";
 
-function generateTreemapHTML(result: FamiliarityResult): string {
+function generateMultiUserHTML(result: MultiUserResult): string {
   const dataJson = JSON.stringify(result.tree);
-  const mode = result.mode;
-  const repoName = result.repoName;
+  const summariesJson = JSON.stringify(result.userSummaries);
+  const usersJson = JSON.stringify(result.users.map((u) => u.name));
 
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>GitFamiliar \u2014 ${repoName}</title>
+<title>GitFamiliar \u2014 ${result.repoName} \u2014 Multi-User</title>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body {
@@ -31,6 +31,15 @@ function generateTreemapHTML(result: FamiliarityResult): string {
     justify-content: space-between;
   }
   #header h1 { font-size: 18px; color: #e94560; }
+  #header .controls { display: flex; align-items: center; gap: 12px; }
+  #header select {
+    padding: 4px 12px;
+    border: 1px solid #0f3460;
+    background: #1a1a2e;
+    color: #e0e0e0;
+    border-radius: 4px;
+    font-size: 13px;
+  }
   #header .info { font-size: 14px; color: #a0a0a0; }
   #breadcrumb {
     padding: 8px 24px;
@@ -41,28 +50,6 @@ function generateTreemapHTML(result: FamiliarityResult): string {
   #breadcrumb span { cursor: pointer; color: #5eadf7; }
   #breadcrumb span:hover { text-decoration: underline; }
   #breadcrumb .sep { color: #666; margin: 0 4px; }
-  #controls {
-    padding: 8px 24px;
-    background: #16213e;
-    border-bottom: 1px solid #0f3460;
-    display: flex;
-    gap: 12px;
-    align-items: center;
-  }
-  #controls button {
-    padding: 4px 12px;
-    border: 1px solid #0f3460;
-    background: #1a1a2e;
-    color: #e0e0e0;
-    border-radius: 4px;
-    cursor: pointer;
-    font-size: 12px;
-  }
-  #controls button.active {
-    background: #e94560;
-    border-color: #e94560;
-    color: white;
-  }
   #treemap { width: 100%; }
   #tooltip {
     position: absolute;
@@ -75,7 +62,7 @@ function generateTreemapHTML(result: FamiliarityResult): string {
     line-height: 1.6;
     display: none;
     z-index: 100;
-    max-width: 300px;
+    max-width: 350px;
   }
   #legend {
     position: absolute;
@@ -88,32 +75,23 @@ function generateTreemapHTML(result: FamiliarityResult): string {
     font-size: 12px;
   }
   #legend .gradient-bar {
-    width: 120px;
-    height: 12px;
+    width: 120px; height: 12px;
     background: linear-gradient(to right, #e94560, #f5a623, #27ae60);
-    border-radius: 3px;
-    margin: 4px 0;
+    border-radius: 3px; margin: 4px 0;
   }
   #legend .labels { display: flex; justify-content: space-between; font-size: 10px; color: #888; }
 </style>
 </head>
 <body>
 <div id="header">
-  <h1>GitFamiliar \u2014 ${repoName}</h1>
-  <div class="info">${mode.charAt(0).toUpperCase() + mode.slice(1)} mode | ${result.totalFiles} files</div>
+  <h1>GitFamiliar \u2014 ${result.repoName}</h1>
+  <div class="controls">
+    <span style="color:#888;font-size:13px;">View as:</span>
+    <select id="userSelect" onchange="changeUser()"></select>
+    <div class="info">${result.mode} mode | ${result.totalFiles} files</div>
+  </div>
 </div>
 <div id="breadcrumb"><span onclick="zoomTo('')">root</span></div>
-${
-  mode === "binary"
-    ? `
-<div id="controls">
-  <span style="font-size:12px;color:#888;">Filter:</span>
-  <button class="active" onclick="setFilter('all')">All</button>
-  <button onclick="setFilter('written')">Written only</button>
-  <button onclick="setFilter('reviewed')">Reviewed only</button>
-</div>`
-    : ""
-}
 <div id="treemap"></div>
 <div id="tooltip"></div>
 <div id="legend">
@@ -125,9 +103,25 @@ ${
 <script src="https://d3js.org/d3.v7.min.js"></script>
 <script>
 const rawData = ${dataJson};
-const mode = "${mode}";
-let currentFilter = 'all';
+const userNames = ${usersJson};
+const summaries = ${summariesJson};
+let currentUser = 0;
 let currentPath = '';
+
+// Populate user selector
+const select = document.getElementById('userSelect');
+userNames.forEach((name, i) => {
+  const opt = document.createElement('option');
+  opt.value = i;
+  const summary = summaries[i];
+  opt.textContent = name + ' (' + Math.round(summary.overallScore * 100) + '%)';
+  select.appendChild(opt);
+});
+
+function changeUser() {
+  currentUser = parseInt(select.value);
+  render();
+}
 
 function scoreColor(score) {
   if (score <= 0) return '#e94560';
@@ -140,11 +134,10 @@ function scoreColor(score) {
   return d3.interpolateRgb('#f5a623', '#27ae60')(t);
 }
 
-function getNodeScore(node) {
-  if (mode !== 'binary') return node.score;
-  if (currentFilter === 'written') return node.isWritten ? 1 : 0;
-  if (currentFilter === 'reviewed') return node.isReviewed ? 1 : 0;
-  return node.score;
+function getUserScore(node) {
+  if (!node.userScores || node.userScores.length === 0) return node.score;
+  const s = node.userScores[currentUser];
+  return s ? s.score : 0;
 }
 
 function findNode(node, path) {
@@ -156,14 +149,6 @@ function findNode(node, path) {
     }
   }
   return null;
-}
-
-function totalLines(node) {
-  if (node.type === 'file') return Math.max(1, node.lines);
-  if (!node.children) return 1;
-  let sum = 0;
-  for (const c of node.children) sum += totalLines(c);
-  return Math.max(1, sum);
 }
 
 function buildHierarchy(node) {
@@ -183,21 +168,15 @@ function render() {
 
   const headerH = document.getElementById('header').offsetHeight;
   const breadcrumbH = document.getElementById('breadcrumb').offsetHeight;
-  const controlsEl = document.getElementById('controls');
-  const controlsH = controlsEl ? controlsEl.offsetHeight : 0;
   const width = window.innerWidth;
-  const height = window.innerHeight - headerH - breadcrumbH - controlsH;
+  const height = window.innerHeight - headerH - breadcrumbH;
 
   const targetNode = currentPath ? findNode(rawData, currentPath) : rawData;
-  if (!targetNode) return;
+  if (!targetNode || !targetNode.children || targetNode.children.length === 0) return;
 
-  const children = targetNode.children || [];
-  if (children.length === 0) return;
-
-  // Build full nested hierarchy from the current target
   const hierarchyData = {
     name: targetNode.path || 'root',
-    children: children.map(c => buildHierarchy(c)),
+    children: targetNode.children.map(c => buildHierarchy(c)),
   };
 
   const root = d3.hierarchy(hierarchyData)
@@ -216,7 +195,6 @@ function render() {
     .attr('height', height);
 
   const tooltip = document.getElementById('tooltip');
-
   const nodes = root.descendants().filter(d => d.depth > 0);
 
   const groups = svg.selectAll('g')
@@ -224,13 +202,12 @@ function render() {
     .join('g')
     .attr('transform', d => \`translate(\${d.x0},\${d.y0})\`);
 
-  // Rect
   groups.append('rect')
     .attr('width', d => Math.max(0, d.x1 - d.x0))
     .attr('height', d => Math.max(0, d.y1 - d.y0))
     .attr('fill', d => {
       if (!d.data.data) return '#333';
-      return scoreColor(getNodeScore(d.data.data));
+      return scoreColor(getUserScore(d.data.data));
     })
     .attr('opacity', d => d.children ? 0.35 : 0.88)
     .attr('stroke', '#1a1a2e')
@@ -257,7 +234,6 @@ function render() {
       tooltip.style.display = 'none';
     });
 
-  // Labels
   groups.append('text')
     .attr('x', 4)
     .attr('y', 14)
@@ -278,27 +254,25 @@ function render() {
 
 function showTooltip(data, event) {
   const tooltip = document.getElementById('tooltip');
-  const name = data.path || '';
-  const score = getNodeScore(data);
-  let html = '<strong>' + name + '</strong>';
-  html += '<br>Score: ' + Math.round(score * 100) + '%';
-  html += '<br>Lines: ' + data.lines.toLocaleString();
+  let html = '<strong>' + (data.path || 'root') + '</strong>';
+
+  if (data.userScores && data.userScores.length > 0) {
+    html += '<table style="margin-top:6px;width:100%">';
+    data.userScores.forEach((s, i) => {
+      const isCurrent = (i === currentUser);
+      const style = isCurrent ? 'font-weight:bold;color:#5eadf7' : '';
+      html += '<tr style="' + style + '"><td>' + userNames[i] + '</td><td style="text-align:right">' + Math.round(s.score * 100) + '%</td></tr>';
+    });
+    html += '</table>';
+  }
+
   if (data.type === 'folder') {
     html += '<br>Files: ' + data.fileCount;
     html += '<br><em style="color:#5eadf7">Click to drill down \\u25B6</em>';
+  } else {
+    html += '<br>Lines: ' + data.lines.toLocaleString();
   }
-  if (data.blameScore !== undefined) {
-    html += '<br>Blame: ' + Math.round(data.blameScore * 100) + '%';
-  }
-  if (data.commitScore !== undefined) {
-    html += '<br>Commit: ' + Math.round(data.commitScore * 100) + '%';
-  }
-  if (data.reviewScore !== undefined) {
-    html += '<br>Review: ' + Math.round(data.reviewScore * 100) + '%';
-  }
-  if (data.isExpired) {
-    html += '<br><span style="color:#e94560">Expired</span>';
-  }
+
   tooltip.innerHTML = html;
   tooltip.style.display = 'block';
   tooltip.style.left = (event.pageX + 14) + 'px';
@@ -307,28 +281,16 @@ function showTooltip(data, event) {
 
 function zoomTo(path) {
   currentPath = path;
-  updateBreadcrumb();
-  render();
-}
-
-function updateBreadcrumb() {
   const el = document.getElementById('breadcrumb');
-  const parts = currentPath ? currentPath.split('/') : [];
+  const parts = path ? path.split('/') : [];
   let html = '<span onclick="zoomTo(\\'\\')">root</span>';
   let accumulated = '';
   for (const part of parts) {
     accumulated = accumulated ? accumulated + '/' + part : part;
     const p = accumulated;
-    html += \`<span class="sep">/</span><span onclick="zoomTo('\${p}')">\${part}</span>\`;
+    html += '<span class="sep">/</span><span onclick="zoomTo(\\'' + p + '\\')">' + part + '</span>';
   }
   el.innerHTML = html;
-}
-
-function setFilter(f) {
-  currentFilter = f;
-  document.querySelectorAll('#controls button').forEach(btn => {
-    btn.classList.toggle('active', btn.textContent.toLowerCase().includes(f));
-  });
   render();
 }
 
@@ -339,15 +301,13 @@ render();
 </html>`;
 }
 
-export async function generateAndOpenHTML(
-  result: FamiliarityResult,
+export async function generateAndOpenMultiUserHTML(
+  result: MultiUserResult,
   repoPath: string,
 ): Promise<void> {
-  const html = generateTreemapHTML(result);
-  const outputPath = join(repoPath, "gitfamiliar-report.html");
-
+  const html = generateMultiUserHTML(result);
+  const outputPath = join(repoPath, "gitfamiliar-multiuser.html");
   writeFileSync(outputPath, html, "utf-8");
-  console.log(`Report generated: ${outputPath}`);
-
+  console.log(`Multi-user report generated: ${outputPath}`);
   await openBrowser(outputPath);
 }
