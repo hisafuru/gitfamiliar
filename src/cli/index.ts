@@ -12,6 +12,7 @@ import { generateAndOpenMultiUserHTML } from "./output/multi-user-html.js";
 import { computeHotspots } from "../core/hotspot.js";
 import { renderHotspotTerminal } from "./output/hotspot-terminal.js";
 import { generateAndOpenHotspotHTML } from "./output/hotspot-html.js";
+import { checkGitHubConnection } from "../github/check.js";
 
 function collect(value: string, previous: string[]): string[] {
   return previous.concat([value]);
@@ -61,10 +62,25 @@ export function createProgram(): Command {
       "--window <days>",
       "Time window for hotspot analysis in days (default: 90)",
     )
+    .option(
+      "--github-url <hostname>",
+      "GitHub Enterprise hostname (e.g. ghe.example.com). Auto-detected from git remote if omitted.",
+    )
+    .option(
+      "--check-github",
+      "Verify GitHub API connectivity and show connection info",
+      false,
+    )
     .action(async (rawOptions) => {
       try {
         const repoPath = process.cwd();
         const options = parseOptions(rawOptions, repoPath);
+
+        // Route: check GitHub connectivity
+        if (options.checkGithub) {
+          await checkGitHubConnection(repoPath, options.githubUrl);
+          return;
+        }
 
         // Route: hotspot analysis
         if (options.hotspot) {

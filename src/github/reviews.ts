@@ -6,29 +6,32 @@ import { resolveGitHubToken } from "./auth.js";
 /**
  * Attempt to fetch review data from GitHub.
  * Returns null if no token or not a GitHub repo.
+ * Supports GitHub Enterprise by auto-detecting the hostname from git remote.
+ * @param githubUrl - Optional override for GitHub hostname (e.g. "ghe.example.com")
  */
 export async function fetchReviewData(
   gitClient: GitClient,
   username?: string,
+  githubUrl?: string,
 ): Promise<{
   reviewedFiles: Map<string, ReviewInfo[]>;
   reviewedFileSet: Set<string>;
 } | null> {
-  const token = resolveGitHubToken();
-  if (!token) return null;
-
   const remoteUrl = await gitClient.getRemoteUrl();
   if (!remoteUrl) return null;
 
-  const parsed = GitHubClient.parseRemoteUrl(remoteUrl);
+  const parsed = GitHubClient.parseRemoteUrl(remoteUrl, githubUrl);
   if (!parsed) return null;
+
+  const token = resolveGitHubToken(parsed.hostname);
+  if (!token) return null;
 
   // GitHub username is required for review API queries
   if (!username) return null;
   const ghUsername = username;
 
   try {
-    const githubClient = new GitHubClient(token);
+    const githubClient = new GitHubClient(token, parsed.apiBaseUrl);
     const reviewedFiles = await githubClient.getReviewedFiles(
       parsed.owner,
       parsed.repo,

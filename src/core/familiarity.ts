@@ -46,7 +46,11 @@ export async function computeFamiliarity(
   let reviewedFileSet = new Set<string>();
 
   if (options.mode !== "authorship") {
-    const reviewResult = await fetchReviewData(gitClient, userFlag);
+    const reviewResult = await fetchReviewData(
+      gitClient,
+      userFlag,
+      options.githubUrl,
+    );
     if (reviewResult) {
       reviewData = reviewResult.reviewedFiles;
       reviewedFileSet = reviewResult.reviewedFileSet;

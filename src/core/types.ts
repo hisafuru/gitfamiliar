@@ -33,6 +33,8 @@ export interface CliOptions {
   teamCoverage?: boolean;
   hotspot?: HotspotMode;
   window?: number; // days for hotspot analysis
+  githubUrl?: string; // GitHub Enterprise hostname override
+  checkGithub?: boolean; // verify GitHub connectivity
 }
 
 export interface UserIdentity {

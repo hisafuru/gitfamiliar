@@ -1,24 +1,28 @@
-import type { ReviewInfo } from '../core/types.js';
-
-interface GitHubPR {
-  number: number;
-  files: string[];
-}
+import type { ReviewInfo } from "../core/types.js";
 
 interface GitHubReview {
   state: string;
   submitted_at: string;
 }
 
+export interface GitHubRemoteInfo {
+  hostname: string; // e.g. "github.com" or "ghe.example.com"
+  owner: string;
+  repo: string;
+  apiBaseUrl: string; // e.g. "https://api.github.com" or "https://ghe.example.com/api/v3"
+}
+
 /**
  * Minimal GitHub client using fetch (no external dependency).
+ * Supports both github.com and GitHub Enterprise.
  */
 export class GitHubClient {
   private token: string;
-  private baseUrl = 'https://api.github.com';
+  private baseUrl: string;
 
-  constructor(token: string) {
+  constructor(token: string, apiBaseUrl: string = "https://api.github.com") {
     this.token = token;
+    this.baseUrl = apiBaseUrl.replace(/\/+$/, "");
   }
 
   private async fetch(path: string): Promise<any> {
@@ -26,31 +30,73 @@ export class GitHubClient {
     const response = await fetch(url, {
       headers: {
         Authorization: `Bearer ${this.token}`,
-        Accept: 'application/vnd.github.v3+json',
-        'User-Agent': 'gitfamiliar',
+        Accept: "application/vnd.github.v3+json",
+        "User-Agent": "gitfamiliar",
       },
     });
 
     if (!response.ok) {
       if (response.status === 403) {
-        throw new Error('GitHub API rate limit exceeded. Please wait or use a token with higher limits.');
+        throw new Error(
+          "GitHub API rate limit exceeded. Please wait or use a token with higher limits.",
+        );
       }
-      throw new Error(`GitHub API error: ${response.status} ${response.statusText}`);
+      throw new Error(
+        `GitHub API error: ${response.status} ${response.statusText}`,
+      );
     }
 
     return response.json();
   }
 
   /**
-   * Parse owner/repo from a git remote URL.
+   * Verify API connectivity by fetching the authenticated user.
    */
-  static parseRemoteUrl(url: string): { owner: string; repo: string } | null {
-    // SSH format: git@github.com:owner/repo.git
-    let match = url.match(/github\.com[:/]([^/]+)\/([^/.]+)(\.git)?$/);
+  async verifyConnection(): Promise<{ login: string; name: string | null }> {
+    const user = await this.fetch("/user");
+    return { login: user.login, name: user.name };
+  }
+
+  /**
+   * Parse owner/repo/hostname from a git remote URL.
+   * Supports github.com and GitHub Enterprise hosts.
+   */
+  static parseRemoteUrl(
+    url: string,
+    overrideHostname?: string,
+  ): GitHubRemoteInfo | null {
+    let hostname: string;
+    let owner: string;
+    let repo: string;
+
+    // SSH format: git@hostname:owner/repo.git
+    let match = url.match(/git@([^:]+):([^/]+)\/([^/.]+)(\.git)?$/);
     if (match) {
-      return { owner: match[1], repo: match[2] };
+      hostname = match[1];
+      owner = match[2];
+      repo = match[3];
+    } else {
+      // HTTPS format: https://hostname/owner/repo.git
+      match = url.match(/https?:\/\/([^/]+)\/([^/]+)\/([^/.]+?)(\.git)?$/);
+      if (match) {
+        hostname = match[1];
+        owner = match[2];
+        repo = match[3];
+      } else {
+        return null;
+      }
     }
-    return null;
+
+    if (overrideHostname) {
+      hostname = overrideHostname;
+    }
+
+    const apiBaseUrl =
+      hostname === "github.com"
+        ? "https://api.github.com"
+        : `https://${hostname}/api/v3`;
+
+    return { hostname, owner, repo, apiBaseUrl };
   }
 
   /**
@@ -63,7 +109,6 @@ export class GitHubClient {
   ): Promise<Map<string, ReviewInfo[]>> {
     const reviewedFiles = new Map<string, ReviewInfo[]>();
 
-    // Get PRs reviewed by the user (search API)
     let page = 1;
     const perPage = 100;
 
@@ -77,7 +122,6 @@ export class GitHubClient {
       for (const item of searchResult.items) {
         const prNumber = item.number;
 
-        // Get the user's reviews for this PR
         const reviews: GitHubReview[] = await this.fetch(
           `/repos/${owner}/${repo}/pulls/${prNumber}/reviews`,
         );
@@ -88,7 +132,6 @@ export class GitHubClient {
 
         if (userReviews.length === 0) continue;
 
-        // Get files in this PR
         const prFiles: any[] = await this.fetch(
           `/repos/${owner}/${repo}/pulls/${prNumber}/files?per_page=100`,
         );
@@ -124,13 +167,13 @@ export class GitHubClient {
   }
 }
 
-function mapReviewState(state: string): ReviewInfo['type'] {
+function mapReviewState(state: string): ReviewInfo["type"] {
   switch (state.toUpperCase()) {
-    case 'APPROVED':
-      return 'approved';
-    case 'CHANGES_REQUESTED':
-      return 'changes_requested';
+    case "APPROVED":
+      return "approved";
+    case "CHANGES_REQUESTED":
+      return "changes_requested";
     default:
-      return 'commented';
+      return "commented";
   }
 }

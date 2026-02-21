@@ -19,6 +19,8 @@ export interface RawCliOptions {
   teamCoverage?: boolean;
   hotspot?: string;
   window?: string;
+  githubUrl?: string;
+  checkGithub?: boolean;
 }
 
 export function parseOptions(raw: RawCliOptions, repoPath: string): CliOptions {
@@ -67,6 +69,8 @@ export function parseOptions(raw: RawCliOptions, repoPath: string): CliOptions {
     teamCoverage: raw.teamCoverage || false,
     hotspot,
     window: windowDays,
+    githubUrl: raw.githubUrl,
+    checkGithub: raw.checkGithub || false,
   };
 }
 
