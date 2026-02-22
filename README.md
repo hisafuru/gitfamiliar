@@ -37,14 +37,20 @@ Overall: 58/172 files (34%)
 Written: 42 files
 ```
 
-Use `--html` to generate an interactive treemap in the browser:
+Use `--html` to generate an **interactive unified dashboard** in the browser:
 
 ```
 $ npx gitfamiliar --html
 ```
 
+The dashboard includes 4 tabs:
+- **Scoring** — Your familiarity treemap with Binary/Authorship/Weighted sub-tabs
+- **Coverage** — Team bus factor analysis with risk indicators
+- **Multi-User** — Side-by-side comparison of all contributors
+- **Hotspots** — Scatter plot of high-risk files (frequent changes x low familiarity)
+
 > Area = lines of code, Color = familiarity (red -> green).
-> Click folders to drill down.
+> Click folders to drill down. Weighted mode sliders recalculate scores in real-time.
 
 ## Quick Start
 
@@ -181,6 +187,39 @@ gitfamiliar --hotspot --html               # scatter plot visualization
 
 Risk = high change frequency x low familiarity.
 
+## HTML Dashboard
+
+### Unified Dashboard (default)
+
+Running `--html` without other feature flags generates a single-page dashboard with all features:
+
+```bash
+gitfamiliar --html                         # unified dashboard (4 tabs)
+gitfamiliar --html --mode weighted         # unified, with weighted as default scoring tab
+```
+
+The dashboard has 4 tabs:
+
+| Tab | Visualization | Description |
+|---|---|---|
+| Scoring | D3 treemap + sub-tabs | Your personal familiarity in Binary, Authorship, and Weighted modes |
+| Coverage | D3 treemap + risk sidebar | Team bus factor — how many people know each area |
+| Multi-User | D3 treemap + user dropdown | Compare familiarity across all contributors |
+| Hotspots | D3 scatter plot + sidebar | Files with high change frequency and low familiarity |
+
+In the Scoring tab's Weighted sub-tab, you can adjust blame/commit weight sliders to recalculate scores in the browser without re-running the CLI.
+
+### Individual HTML Reports
+
+You can still generate individual HTML reports for specific features:
+
+```bash
+gitfamiliar --html --hotspot               # hotspot scatter plot only
+gitfamiliar --html --team-coverage         # coverage treemap only
+gitfamiliar --html --team                  # multi-user treemap only
+gitfamiliar --html --user "Alice" --user "Bob"  # specific users comparison
+```
+
 ## Expiration Policies
 
 By default, "written" status never expires. But real knowledge fades. Configure expiration to keep scores honest:
@@ -228,7 +267,9 @@ Options:
                              Default: git config user.name
   -e, --expiration <policy>  Expiration policy (default: "never")
                              Examples: time:180d, change:50%, combined:365d:50%
-      --html                 Generate interactive HTML treemap report
+      --html                 Generate interactive HTML report
+                             Alone: unified 4-tab dashboard
+                             With --hotspot/--team-coverage/--team: individual report
   -w, --weights <weights>    Weights for weighted mode: blame,commit
                              Example: "0.6,0.4" (must sum to 1.0)
       --team                 Compare all contributors

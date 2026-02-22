@@ -1,5 +1,9 @@
+import { createRequire } from "node:module";
 import { Command } from "commander";
 import { parseOptions } from "./options.js";
+
+const require = createRequire(import.meta.url);
+const pkg = require("../../package.json");
 import { computeFamiliarity } from "../core/familiarity.js";
 import { renderTerminal } from "./output/terminal.js";
 import { generateAndOpenHTML } from "./output/html.js";
@@ -25,7 +29,7 @@ export function createProgram(): Command {
   program
     .name("gitfamiliar")
     .description("Visualize your code familiarity from Git history")
-    .version("0.1.1")
+    .version(pkg.version)
     .option(
       "-m, --mode <mode>",
       "Scoring mode: binary, authorship, weighted",
