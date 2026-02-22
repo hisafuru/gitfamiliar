@@ -20,18 +20,6 @@ export function recencyDecay(days: number, halfLife: number = 180): number {
 }
 
 /**
- * Scope factor: min(1, attentionThreshold / filesInPR)
- * Models attention dilution in large PRs.
- */
-export function scopeFactor(
-  filesInPR: number,
-  attentionThreshold: number = 20,
-): number {
-  if (filesInPR <= 0) return 1;
-  return Math.min(1, attentionThreshold / filesInPR);
-}
-
-/**
  * Normalized diff: (added + 0.5 * deleted) / fileSize
  */
 export function normalizedDiff(

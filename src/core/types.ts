@@ -167,8 +167,6 @@ export interface UnifiedData {
   multiUser: MultiUserResult;
 }
 
-// FamiliarityResult is defined in familiarity.ts but we need a forward reference
-// for UnifiedData. The actual type is re-exported from familiarity.ts.
 export interface FamiliarityResult {
   tree: FolderScore;
   repoName: string;
