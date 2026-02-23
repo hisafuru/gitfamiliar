@@ -1,14 +1,18 @@
-<p align="center">
-  <h1 align="center">GitFamiliar</h1>
-  <p align="center">
-    <strong>Visualize your code familiarity from Git history.</strong>
-  </p>
-  <p align="center">
-    <a href="https://www.npmjs.com/package/gitfamiliar"><img src="https://img.shields.io/npm/v/gitfamiliar.svg" alt="npm version"></a>
-    <a href="https://www.npmjs.com/package/gitfamiliar"><img src="https://img.shields.io/npm/dm/gitfamiliar.svg" alt="npm downloads"></a>
-    <a href="https://github.com/kuze/gitfamiliar/blob/main/LICENSE"><img src="https://img.shields.io/npm/l/gitfamiliar.svg" alt="license"></a>
-  </p>
-</p>
+<div align="center">
+
+# GitFamiliar
+
+### Know your code. Not just your commits.
+
+[![npm version](https://img.shields.io/npm/v/gitfamiliar.svg?style=flat-square&color=e94560)](https://www.npmjs.com/package/gitfamiliar)
+[![npm downloads](https://img.shields.io/npm/dm/gitfamiliar.svg?style=flat-square&color=5eadf7)](https://www.npmjs.com/package/gitfamiliar)
+[![license](https://img.shields.io/npm/l/gitfamiliar.svg?style=flat-square&color=27ae60)](https://github.com/kuze/gitfamiliar/blob/main/LICENSE)
+
+**Measure how well you *understand* the codebase — not just how much you wrote.**
+
+[Quick Start](#-quick-start) · [Scoring Modes](#-scoring-modes) · [Team Features](#-team-features) · [HTML Dashboard](#-html-dashboard) · [CLI Reference](#-cli-reference)
+
+</div>
 
 ---
 
@@ -39,18 +43,27 @@ Written: 42 files
 
 Use `--html` to generate an **interactive unified dashboard** in the browser:
 
-```
-$ npx gitfamiliar --html
+```bash
+npx gitfamiliar --html
 ```
 
-The dashboard includes 4 tabs:
-- **Scoring** — Your familiarity treemap with Binary/Authorship/Weighted sub-tabs
-- **Coverage** — Team bus factor analysis with risk indicators
-- **Multi-User** — Side-by-side comparison of all contributors
-- **Hotspots** — Scatter plot of high-risk files (frequent changes x low familiarity)
+> **4 tabs** — Scoring / Coverage / Multi-User / Hotspots
+> **Area** = lines of code, **Color** = familiarity (red → green)
+> Click folders to drill down. Weighted mode sliders recalculate in real-time.
 
-> Area = lines of code, Color = familiarity (red -> green).
-> Click folders to drill down. Weighted mode sliders recalculate scores in real-time.
+---
+
+## Why GitFamiliar?
+
+|  | git-fame / GitHub | **GitFamiliar** |
+|:---|:---|:---|
+| What it measures | How much you **wrote** | How well you **understand** |
+| Metric | Lines / commits (cumulative) | Familiarity score (multi-signal) |
+| Use case | Contribution stats | Onboarding progress |
+| Time decay | No | Yes (knowledge fades) |
+| Team analysis | No | Yes (bus factor, coverage, hotspots) |
+
+---
 
 ## Quick Start
 
@@ -66,19 +79,13 @@ Or install globally:
 npm install -g gitfamiliar
 ```
 
-## Why GitFamiliar?
-
-|  | git-fame / GitHub | GitFamiliar |
-|---|---|---|
-| What it measures | How much you **wrote** | How well you **understand** |
-| Metric | Lines / commits (cumulative) | Familiarity score (multi-signal) |
-| Use case | Contribution stats | Onboarding progress |
-| Time decay | No | Yes (knowledge fades) |
-| Team analysis | No | Yes (bus factor, multi-user comparison) |
+---
 
 ## Scoring Modes
 
-### Binary (default)
+### `binary` — default
+
+> Best for: **New team members** tracking onboarding progress.
 
 Files are "written" or "not written". A file counts as written if you have at least one commit touching it.
 
@@ -86,14 +93,9 @@ Files are "written" or "not written". A file counts as written if you have at le
 familiarity = written_files / total_files
 ```
 
-```bash
-gitfamiliar                    # default
-```
+### `authorship`
 
-> Best for: **New team members** tracking onboarding progress.
-> Scores only go up (by default), giving a sense of achievement.
-
-### Authorship
+> Best for: **Tech leads** assessing code ownership and bus factor.
 
 Your share of the current codebase, based on `git blame -w`.
 
@@ -106,25 +108,22 @@ score(project) = sum(your_lines) / sum(all_lines)
 gitfamiliar --mode authorship
 ```
 
-> Best for: **Tech leads** assessing bus factor and code ownership.
+### `weighted`
 
-### Weighted
+> Best for: **Power users** who want the most accurate picture.
 
 Combines two signals with configurable weights and time decay:
 
 ```
-familiarity = w1 x blame_score + w2 x commit_score
+familiarity = w1 × blame_score + w2 × commit_score
 ```
 
-Default weights: `blame=0.5, commit=0.5`
-
-Key features:
 - **Sigmoid normalization** prevents a single large commit from dominating
 - **Recency decay** (half-life: 180 days) models knowledge fading over time
 
 ```bash
 gitfamiliar --mode weighted
-gitfamiliar --mode weighted --weights "0.6,0.4"   # custom weights
+gitfamiliar --mode weighted --weights "0.6,0.4"
 ```
 
 <details>
@@ -136,18 +135,18 @@ File: `src/auth/login.ts` (200 lines)
 blame_score  = 30 lines / 200 lines = 0.15
 
 commit_score:
-  commit 1 (10 days ago, +30/-0): sigmoid(30/200) x decay(10d) = 0.33 x 0.96
-  commit 2 (45 days ago,  +5/-2): sigmoid(6/200)  x decay(45d) = 0.09 x 0.84
+  commit 1 (10 days ago, +30/-0): sigmoid(30/200) × decay(10d) = 0.33 × 0.96
+  commit 2 (45 days ago,  +5/-2): sigmoid(6/200)  × decay(45d) = 0.09 × 0.84
   total: min(1, 0.39) = 0.39
 
-familiarity  = 0.5 x 0.15 + 0.5 x 0.39
+familiarity  = 0.5 × 0.15 + 0.5 × 0.39
              = 0.075 + 0.195
-             = 0.27 -> 27%
+             = 0.27 → 27%
 ```
 
 </details>
 
-> Best for: **Power users** who want the most accurate picture.
+---
 
 ## Team Features
 
@@ -169,10 +168,11 @@ gitfamiliar --team-coverage
 gitfamiliar --team-coverage --html
 ```
 
-Shows risk levels per folder:
-- **RISK** (0-1 contributors) — single point of failure
-- **MODERATE** (2-3 contributors) — some coverage
-- **SAFE** (4+ contributors) — well-distributed knowledge
+| Risk Level | Contributors | Meaning |
+|:---|:---|:---|
+| **RISK** | 0–1 | Single point of failure |
+| **MODERATE** | 2–3 | Some coverage |
+| **SAFE** | 4+ | Well-distributed knowledge |
 
 ### Hotspot Analysis
 
@@ -185,7 +185,9 @@ gitfamiliar --hotspot --window 30          # last 30 days only
 gitfamiliar --hotspot --html               # scatter plot visualization
 ```
 
-Risk = high change frequency x low familiarity.
+> **Risk = high change frequency × low familiarity**
+
+---
 
 ## HTML Dashboard
 
@@ -195,23 +197,17 @@ Running `--html` without other feature flags generates a single-page dashboard w
 
 ```bash
 gitfamiliar --html                         # unified dashboard (4 tabs)
-gitfamiliar --html --mode weighted         # unified, with weighted as default scoring tab
+gitfamiliar --html --mode weighted         # unified, weighted as default scoring tab
 ```
 
-The dashboard has 4 tabs:
-
 | Tab | Visualization | Description |
-|---|---|---|
-| Scoring | D3 treemap + sub-tabs | Your personal familiarity in Binary, Authorship, and Weighted modes |
-| Coverage | D3 treemap + risk sidebar | Team bus factor — how many people know each area |
-| Multi-User | D3 treemap + user dropdown | Compare familiarity across all contributors |
-| Hotspots | D3 scatter plot + sidebar | Files with high change frequency and low familiarity |
-
-In the Scoring tab's Weighted sub-tab, you can adjust blame/commit weight sliders to recalculate scores in the browser without re-running the CLI.
+|:---|:---|:---|
+| **Scoring** | D3 treemap + sub-tabs | Binary, Authorship, Weighted modes with real-time weight sliders |
+| **Coverage** | D3 treemap + risk sidebar | Team bus factor — how many people know each area |
+| **Multi-User** | D3 treemap + user dropdown | Compare familiarity across all contributors |
+| **Hotspots** | D3 scatter plot + sidebar | High change frequency × low familiarity = risk |
 
 ### Individual HTML Reports
-
-You can still generate individual HTML reports for specific features:
 
 ```bash
 gitfamiliar --html --hotspot               # hotspot scatter plot only
@@ -220,40 +216,38 @@ gitfamiliar --html --team                  # multi-user treemap only
 gitfamiliar --html --user "Alice" --user "Bob"  # specific users comparison
 ```
 
+---
+
 ## Expiration Policies
 
-By default, "written" status never expires. But real knowledge fades. Configure expiration to keep scores honest:
+Real knowledge fades. Configure expiration to keep scores honest:
 
 | Policy | Flag | What happens |
-|---|---|---|
+|:---|:---|:---|
 | Never | `--expiration never` | Once written, always counted (default) |
 | Time-based | `--expiration time:180d` | Expires 180 days after your last touch |
-| Change-based | `--expiration change:50%` | Expires if 50%+ of the file changed since you last touched it |
+| Change-based | `--expiration change:50%` | Expires if 50%+ of the file changed since |
 | Combined | `--expiration combined:365d:50%` | Expires if **either** condition is met |
 
-The change-based policy is the smartest: it detects when the code you wrote has been substantially rewritten, meaning your understanding is likely outdated.
+> The change-based policy is the smartest: it detects when the code you wrote has been substantially rewritten, meaning your understanding is likely outdated.
+
+---
 
 ## File Filtering
 
-GitFamiliar automatically ignores noise. It only considers git-tracked files, minus:
-
-- Lock files (`package-lock.json`, `yarn.lock`, etc.)
-- Generated/minified files (`*.min.js`, `*.map`, `*.generated.*`)
-- Build outputs (`dist/`, `build/`, `.next/`)
-- Config files that rarely need understanding (`tsconfig.json`, `.eslintrc*`)
+GitFamiliar automatically ignores noise — lock files, generated/minified files, build outputs, and config files.
 
 ### Custom filtering
 
 Create a `.gitfamiliarignore` in your repo root (same syntax as `.gitignore`):
 
 ```gitignore
-# Also ignore vendor code
 vendor/
 third_party/
-
-# Ignore migration files
 **/migrations/
 ```
+
+---
 
 ## CLI Reference
 
@@ -261,28 +255,22 @@ third_party/
 Usage: gitfamiliar [options]
 
 Options:
-  -m, --mode <mode>          Scoring mode (default: "binary")
-                             Choices: binary, authorship, weighted
-  -u, --user <user>          Git user name or email (repeatable for comparison)
-                             Default: git config user.name
-  -e, --expiration <policy>  Expiration policy (default: "never")
-                             Examples: time:180d, change:50%, combined:365d:50%
-      --html                 Generate interactive HTML report
-                             Alone: unified 4-tab dashboard
-                             With --hotspot/--team-coverage/--team: individual report
-  -w, --weights <weights>    Weights for weighted mode: blame,commit
-                             Example: "0.6,0.4" (must sum to 1.0)
+  -m, --mode <mode>          Scoring mode: binary | authorship | weighted (default: "binary")
+  -u, --user <user>          Git user name/email (repeatable for comparison)
+  -e, --expiration <policy>  Expiration: never | time:Nd | change:N% | combined:Nd:N%
+      --html                 Generate HTML report (alone = unified dashboard)
+  -w, --weights <w1,w2>      Weights for weighted mode (must sum to 1.0)
       --team                 Compare all contributors
-      --team-coverage         Show team coverage map (bus factor analysis)
+      --team-coverage        Show team coverage map (bus factor analysis)
       --hotspot [mode]       Hotspot analysis: personal (default) or team
       --window <days>        Time window for hotspot analysis (default: 90)
   -V, --version              Output version number
   -h, --help                 Display help
 ```
 
-## Programmatic API
+---
 
-GitFamiliar can also be used as a library:
+## Programmatic API
 
 ```typescript
 import { computeFamiliarity } from 'gitfamiliar';
@@ -297,6 +285,8 @@ const result = await computeFamiliarity({
 
 console.log(`Score: ${Math.round(result.tree.score * 100)}%`);
 ```
+
+---
 
 ## Requirements
 
@@ -317,9 +307,9 @@ npm test
 
 ## Roadmap
 
-- [ ] **Dependency Awareness** - Factor in understanding of imported files
-- [ ] **VS Code Extension** - See familiarity scores inline in the editor
-- [ ] **README Badge** - Codecov-style badge for your project README
+- [ ] Dependency Awareness — factor in understanding of imported files
+- [ ] VS Code Extension — see familiarity scores inline in the editor
+- [ ] README Badge — Codecov-style badge for your project README
 
 ## License
 
