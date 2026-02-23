@@ -164,6 +164,7 @@ export interface UnifiedData {
   };
   coverage: TeamCoverageResult;
   hotspot: HotspotResult;
+  hotspotTeamFamiliarity: Record<string, number>;
   multiUser: MultiUserResult;
 }
 

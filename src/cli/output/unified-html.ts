@@ -21,6 +21,7 @@ function generateUnifiedHTML(data: UnifiedData): string {
         riskLevel: f.riskLevel,
       })),
   );
+  const hotspotTeamFamJson = JSON.stringify(data.hotspotTeamFamiliarity);
   const multiUserTreeJson = JSON.stringify(data.multiUser.tree);
   const multiUserSummariesJson = JSON.stringify(data.multiUser.userSummaries);
   const multiUserNamesJson = JSON.stringify(
@@ -302,6 +303,29 @@ function generateUnifiedHTML(data: UnifiedData): string {
   #multiuser-controls select:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 12px rgba(233,69,96,0.3); }
   #multiuser-controls label { font-size: 13px; color: var(--text-dim); }
 
+  /* Hotspot controls */
+  #hotspot-controls {
+    display: none;
+    padding: 8px 24px;
+    background: var(--bg-panel);
+    border-bottom: 1px solid var(--border);
+    align-items: center;
+    gap: 12px;
+  }
+  #hotspot-controls.visible { display: flex; }
+  #hotspot-controls label { font-size: 13px; color: var(--text-dim); }
+  #hotspot-controls .sep-v {
+    width: 1px;
+    height: 20px;
+    background: var(--border);
+    margin: 0 8px;
+  }
+  .subtab.disabled {
+    opacity: 0.35;
+    pointer-events: none;
+    cursor: default;
+  }
+
   /* Tooltip */
   #tooltip {
     position: absolute;
@@ -405,6 +429,17 @@ function generateUnifiedHTML(data: UnifiedData): string {
   <select id="userSelect" onchange="onUserChange()"></select>
 </div>
 
+<div id="hotspot-controls">
+  <label>Mode:</label>
+  <button class="subtab active" onclick="switchHotspotMode('personal')">Personal</button>
+  <button class="subtab" onclick="switchHotspotMode('team')">Team</button>
+  <span class="sep-v"></span>
+  <label>Scoring:</label>
+  <button class="subtab hs-scoring active" onclick="switchHotspotScoring('binary')">Binary</button>
+  <button class="subtab hs-scoring" onclick="switchHotspotScoring('authorship')">Authorship</button>
+  <button class="subtab hs-scoring" onclick="switchHotspotScoring('weighted')">Weighted</button>
+</div>
+
 <div id="breadcrumb"><span onclick="zoomTo('')">root</span></div>
 
 <div id="content-area">
@@ -459,6 +494,7 @@ const scoringData = {
 const coverageData = ${coverageTreeJson};
 const coverageRiskFiles = ${coverageRiskJson};
 const hotspotData = ${hotspotJson};
+const hotspotTeamFamiliarity = ${hotspotTeamFamJson};
 const multiUserData = ${multiUserTreeJson};
 const multiUserNames = ${multiUserNamesJson};
 const multiUserSummaries = ${multiUserSummariesJson};
@@ -471,7 +507,65 @@ let scoringPath = '';
 let coveragePath = '';
 let multiuserPath = '';
 let currentUser = 0;
+let hotspotMode = 'personal';
+let hotspotScoring = 'binary';
 const rendered = { scoring: false, coverage: false, hotspots: false, multiuser: false };
+
+// ── Hotspot recalculation utilities ──
+function extractFlatScores(node) {
+  const map = {};
+  function walk(n) {
+    if (n.type === 'file') { map[n.path] = n.score; }
+    else if (n.children) { n.children.forEach(walk); }
+  }
+  walk(node);
+  return map;
+}
+
+const personalScores = {
+  binary: extractFlatScores(scoringData.binary),
+  authorship: extractFlatScores(scoringData.authorship),
+  weighted: extractFlatScores(scoringData.weighted),
+};
+
+function recalculateHotspotData() {
+  const famScores = hotspotMode === 'personal'
+    ? personalScores[hotspotScoring]
+    : hotspotTeamFamiliarity;
+  const maxFreq = d3.max(hotspotData, d => d.changeFrequency) || 1;
+  return hotspotData.map(d => {
+    const familiarity = famScores[d.path] || 0;
+    const normalizedFreq = d.changeFrequency / maxFreq;
+    const risk = normalizedFreq * (1 - familiarity);
+    return { ...d, familiarity, risk,
+      riskLevel: risk >= 0.6 ? 'critical' : risk >= 0.4 ? 'high' : risk >= 0.2 ? 'medium' : 'low',
+    };
+  }).sort((a, b) => b.risk - a.risk);
+}
+
+function switchHotspotMode(mode) {
+  hotspotMode = mode;
+  document.querySelectorAll('#hotspot-controls .subtab:not(.hs-scoring)').forEach(el => {
+    el.classList.toggle('active', el.textContent.toLowerCase() === mode);
+  });
+  // Disable scoring buttons in team mode
+  const isTeam = mode === 'team';
+  document.querySelectorAll('#hotspot-controls .hs-scoring').forEach(el => {
+    el.classList.toggle('disabled', isTeam);
+  });
+  renderHotspot();
+  renderHotspotSidebar();
+}
+
+function switchHotspotScoring(mode) {
+  if (hotspotMode === 'team') return;
+  hotspotScoring = mode;
+  document.querySelectorAll('#hotspot-controls .hs-scoring').forEach(el => {
+    el.classList.toggle('active', el.textContent.toLowerCase() === mode);
+  });
+  renderHotspot();
+  renderHotspotSidebar();
+}
 
 // ── Common utilities ──
 function scoreColor(score) {
@@ -590,6 +684,7 @@ function switchTab(tab) {
   document.getElementById('scoring-controls').classList.toggle('visible', tab === 'scoring');
   document.getElementById('scoring-mode-desc').classList.toggle('visible', tab === 'scoring');
   document.getElementById('multiuser-controls').classList.toggle('visible', tab === 'multiuser');
+  document.getElementById('hotspot-controls').classList.toggle('visible', tab === 'hotspots');
 
   // Show/hide breadcrumb
   const showBreadcrumb = tab === 'scoring' || tab === 'coverage' || tab === 'multiuser';
@@ -864,15 +959,17 @@ function renderHotspot() {
     height = contentH;
   }
 
+  const currentData = recalculateHotspotData();
+
   const margin = { top: 30, right: 30, bottom: 60, left: 70 };
   const innerW = width - margin.left - margin.right;
   const innerH = height - margin.top - margin.bottom;
 
-  const maxFreq = d3.max(hotspotData, d => d.changeFrequency) || 1;
+  const maxFreq = d3.max(currentData, d => d.changeFrequency) || 1;
 
   const x = d3.scaleLinear().domain([0, 1]).range([0, innerW]);
   const y = d3.scaleLinear().domain([0, maxFreq * 1.1]).range([innerH, 0]);
-  const r = d3.scaleSqrt().domain([0, d3.max(hotspotData, d => d.lines) || 1]).range([3, 20]);
+  const r = d3.scaleSqrt().domain([0, d3.max(currentData, d => d.lines) || 1]).range([3, 20]);
 
   const svg = d3.select('#hotspot-viz').append('svg').attr('width', width).attr('height', height);
   const g = svg.append('g').attr('transform', 'translate(' + margin.left + ',' + margin.top + ')');
@@ -919,7 +1016,7 @@ function renderHotspot() {
   labels.appendChild(safeLabel);
 
   // Data points
-  g.selectAll('circle').data(hotspotData).join('circle')
+  g.selectAll('circle').data(currentData).join('circle')
     .attr('cx', d => x(d.familiarity))
     .attr('cy', d => y(d.changeFrequency))
     .attr('r', d => r(d.lines))
@@ -950,7 +1047,8 @@ function renderHotspot() {
 
 function renderHotspotSidebar() {
   const container = document.getElementById('hotspot-list');
-  const top = hotspotData.slice(0, 30);
+  const currentData = recalculateHotspotData();
+  const top = currentData.slice(0, 30);
   if (top.length === 0) {
     container.innerHTML = '<div style="color:#888">No active files in time window.</div>';
     return;

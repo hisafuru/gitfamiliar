@@ -10,7 +10,10 @@ import { createFilter } from "../filter/ignore.js";
 import { buildFileTree, walkFiles } from "./file-tree.js";
 import { computeFamiliarity } from "./familiarity.js";
 import { bulkGetChangeFrequency } from "../git/change-frequency.js";
-import { bulkGetFileContributors, getAllContributors } from "../git/contributors.js";
+import {
+  bulkGetFileContributors,
+  getAllContributors,
+} from "../git/contributors.js";
 import { processBatch } from "../utils/batch.js";
 import { resolveUser } from "../git/identity.js";
 
@@ -37,7 +40,11 @@ export async function computeHotspots(
   walkFiles(tree, (f) => trackedFiles.add(f.path));
 
   // Get change frequency for all files (single git log call)
-  const changeFreqMap = await bulkGetChangeFrequency(gitClient, timeWindow, trackedFiles);
+  const changeFreqMap = await bulkGetChangeFrequency(
+    gitClient,
+    timeWindow,
+    trackedFiles,
+  );
 
   // Get familiarity scores
   let familiarityMap: Map<string, number>;
@@ -45,11 +52,21 @@ export async function computeHotspots(
 
   if (isTeamMode) {
     // Team mode: average familiarity across all contributors
-    familiarityMap = await computeTeamAvgFamiliarity(gitClient, trackedFiles, options);
+    familiarityMap = await computeTeamAvgFamiliarity(
+      gitClient,
+      trackedFiles,
+      options,
+    );
   } else {
     // Personal mode: single user's familiarity
-    const userFlag = Array.isArray(options.user) ? options.user[0] : options.user;
-    const result = await computeFamiliarity({ ...options, team: false, teamCoverage: false });
+    const userFlag = Array.isArray(options.user)
+      ? options.user[0]
+      : options.user;
+    const result = await computeFamiliarity({
+      ...options,
+      team: false,
+      teamCoverage: false,
+    });
     userName = result.userName;
     familiarityMap = new Map<string, number>();
     walkFiles(result.tree, (f) => {
@@ -127,14 +144,17 @@ export function classifyHotspotRisk(risk: number): HotspotRiskLevel {
  * know each file, then normalizes as: avgFam = contributorCount / totalContributors.
  * This is a lightweight proxy for "how well-known is this file across the team".
  */
-async function computeTeamAvgFamiliarity(
+export async function computeTeamAvgFamiliarity(
   gitClient: GitClient,
   trackedFiles: Set<string>,
   options: CliOptions,
 ): Promise<Map<string, number>> {
   const contributors = await getAllContributors(gitClient, 1);
   const totalContributors = Math.max(1, contributors.length);
-  const fileContributors = await bulkGetFileContributors(gitClient, trackedFiles);
+  const fileContributors = await bulkGetFileContributors(
+    gitClient,
+    trackedFiles,
+  );
 
   const result = new Map<string, number>();
   for (const filePath of trackedFiles) {
@@ -142,7 +162,10 @@ async function computeTeamAvgFamiliarity(
     const count = contribs ? contribs.size : 0;
     // Normalize: what fraction of the team knows this file
     // Cap at 1.0 (e.g., if everyone knows it)
-    result.set(filePath, Math.min(1, count / Math.max(1, totalContributors * 0.3)));
+    result.set(
+      filePath,
+      Math.min(1, count / Math.max(1, totalContributors * 0.3)),
+    );
   }
 
   return result;
