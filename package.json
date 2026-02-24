@@ -1,6 +1,6 @@
 {
   "name": "gitfamiliar",
-  "version": "0.9.0",
+  "version": "0.10.0",
   "description": "Visualize your code familiarity from Git history",
   "type": "module",
   "main": "./dist/index.js",
