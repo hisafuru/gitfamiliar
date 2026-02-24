@@ -32,8 +32,8 @@ export function createProgram(): Command {
     .version(pkg.version)
     .option(
       "-m, --mode <mode>",
-      "Scoring mode: binary, authorship, weighted",
-      "binary",
+      "Scoring mode: committed, code-coverage, weighted",
+      "committed",
     )
     .option(
       "-u, --user <user>",
@@ -53,15 +53,15 @@ export function createProgram(): Command {
     )
     .option("--team", "Compare all contributors", false)
     .option(
-      "--team-coverage",
-      "Show team coverage map (bus factor analysis)",
+      "--contributors-per-file",
+      "Analyze number of contributors per file (bus factor)",
       false,
     )
+    .option("--contributors", "Alias for --contributors-per-file")
+    .option("--team-coverage", "Deprecated alias for --contributors-per-file")
     .option("--hotspot [mode]", "Hotspot analysis: personal (default) or team")
-    .option(
-      "--window <days>",
-      "Time window for hotspot analysis in days (default: 90)",
-    )
+    .option("--since <days>", "Hotspot analysis period in days (default: 90)")
+    .option("--window <days>", "Deprecated alias for --since")
     .action(async (rawOptions) => {
       try {
         const repoPath = process.cwd();
@@ -74,7 +74,7 @@ export function createProgram(): Command {
         if (
           options.html &&
           !options.hotspot &&
-          !options.teamCoverage &&
+          !options.contributorsPerFile &&
           !isMultiUserCheck
         ) {
           const data = await computeUnified(options);
@@ -93,8 +93,8 @@ export function createProgram(): Command {
           return;
         }
 
-        // Route: team coverage
-        if (options.teamCoverage) {
+        // Route: contributors per file
+        if (options.contributorsPerFile) {
           const result = await computeTeamCoverage(options);
           if (options.html) {
             await generateAndOpenCoverageHTML(result, repoPath);

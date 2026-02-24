@@ -23,10 +23,10 @@ function formatPercent(score: number): string {
 
 function getModeLabel(mode: string): string {
   switch (mode) {
-    case "binary":
-      return "Binary mode";
-    case "authorship":
-      return "Authorship mode";
+    case "committed":
+      return "Committed mode";
+    case "code-coverage":
+      return "Code Coverage mode";
     case "weighted":
       return "Weighted mode";
     default:
@@ -64,7 +64,7 @@ function renderFolder(
       );
       const padding = " ".repeat(padWidth);
 
-      if (mode === "binary") {
+      if (mode === "committed") {
         const readCount = folder.readCount || 0;
         lines.push(
           `${prefix}${chalk.bold(name)}${padding} ${bar}  ${pct.padStart(4)} (${readCount}/${folder.fileCount} files)`,
@@ -94,7 +94,7 @@ export function renderTerminal(result: FamiliarityResult): void {
   );
   console.log("");
 
-  if (mode === "binary") {
+  if (mode === "committed") {
     const readCount = tree.readCount || 0;
     const pct = formatPercent(tree.score);
     console.log(`Overall: ${readCount}/${tree.fileCount} files (${pct})`);
@@ -112,7 +112,7 @@ export function renderTerminal(result: FamiliarityResult): void {
 
   console.log("");
 
-  if (mode === "binary") {
+  if (mode === "committed") {
     const { writtenCount } = result;
     console.log(`Written: ${writtenCount} files`);
     console.log("");

@@ -32,7 +32,7 @@ export async function computeHotspots(
   const repoRoot = await gitClient.getRepoRoot();
   const filter = createFilter(repoRoot);
   const tree = await buildFileTree(gitClient, filter);
-  const timeWindow = options.window || DEFAULT_WINDOW;
+  const timeWindow = options.since || DEFAULT_WINDOW;
   const isTeamMode = options.hotspot === "team";
 
   // Get all tracked files
@@ -65,7 +65,7 @@ export async function computeHotspots(
     const result = await computeFamiliarity({
       ...options,
       team: false,
-      teamCoverage: false,
+      contributorsPerFile: false,
     });
     userName = result.userName;
     familiarityMap = new Map<string, number>();

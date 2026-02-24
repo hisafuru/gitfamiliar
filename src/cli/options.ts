@@ -14,13 +14,16 @@ export interface RawCliOptions {
   html?: boolean;
   weights?: string;
   team?: boolean;
-  teamCoverage?: boolean;
+  contributorsPerFile?: boolean;
+  contributors?: boolean;
+  teamCoverage?: boolean; // deprecated alias
   hotspot?: string;
-  window?: string;
+  since?: string;
+  window?: string; // deprecated alias
 }
 
 export function parseOptions(raw: RawCliOptions, repoPath: string): CliOptions {
-  const mode = validateMode(raw.mode || "binary");
+  const mode = validateMode(raw.mode || "committed");
 
   let weights = DEFAULT_WEIGHTS;
   if (raw.weights) {
@@ -49,8 +52,9 @@ export function parseOptions(raw: RawCliOptions, repoPath: string): CliOptions {
     }
   }
 
-  // Parse --window flag
-  const windowDays = raw.window ? parseInt(raw.window, 10) : undefined;
+  // Parse --since flag (with --window as deprecated alias)
+  const sinceRaw = raw.since || raw.window;
+  const sinceDays = sinceRaw ? parseInt(sinceRaw, 10) : undefined;
 
   return {
     mode,
@@ -60,14 +64,24 @@ export function parseOptions(raw: RawCliOptions, repoPath: string): CliOptions {
     weights,
     repoPath,
     team: raw.team || false,
-    teamCoverage: raw.teamCoverage || false,
+    contributorsPerFile:
+      raw.contributorsPerFile || raw.contributors || raw.teamCoverage || false,
     hotspot,
-    window: windowDays,
+    since: sinceDays,
   };
 }
 
+const MODE_ALIASES: Record<string, ScoringMode> = {
+  binary: "committed",
+  authorship: "code-coverage",
+};
+
 function validateMode(mode: string): ScoringMode {
-  const valid: ScoringMode[] = ["binary", "authorship", "weighted"];
+  // Support old names as aliases
+  if (mode in MODE_ALIASES) {
+    return MODE_ALIASES[mode];
+  }
+  const valid: ScoringMode[] = ["committed", "code-coverage", "weighted"];
   if (!valid.includes(mode as ScoringMode)) {
     throw new Error(
       `Invalid mode: "${mode}". Valid modes: ${valid.join(", ")}`,

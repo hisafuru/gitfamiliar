@@ -1,4 +1,4 @@
-export type ScoringMode = "binary" | "authorship" | "weighted";
+export type ScoringMode = "committed" | "code-coverage" | "weighted";
 export type ExpirationPolicyType = "never" | "time" | "change" | "combined";
 
 export interface ExpirationConfig {
@@ -23,9 +23,9 @@ export interface CliOptions {
   weights: WeightConfig;
   repoPath: string;
   team?: boolean;
-  teamCoverage?: boolean;
+  contributorsPerFile?: boolean;
   hotspot?: HotspotMode;
-  window?: number; // days for hotspot analysis
+  since?: number; // days for hotspot analysis
 }
 
 export interface UserIdentity {
@@ -158,8 +158,8 @@ export interface UnifiedData {
   repoName: string;
   userName: string;
   scoring: {
-    binary: FamiliarityResult;
-    authorship: FamiliarityResult;
+    committed: FamiliarityResult;
+    codeCoverage: FamiliarityResult;
     weighted: FamiliarityResult;
   };
   coverage: TeamCoverageResult;

@@ -13,10 +13,10 @@ export async function computeUnified(
   console.log("Computing unified dashboard data...");
 
   // Run scoring for all 3 modes
-  console.log("  [1/4] Scoring (binary, authorship, weighted)...");
-  const [binary, authorship, weighted] = await Promise.all([
-    computeFamiliarity({ ...options, mode: "binary" }),
-    computeFamiliarity({ ...options, mode: "authorship" }),
+  console.log("  [1/4] Scoring (committed, code-coverage, weighted)...");
+  const [committed, codeCoverage, weighted] = await Promise.all([
+    computeFamiliarity({ ...options, mode: "committed" }),
+    computeFamiliarity({ ...options, mode: "code-coverage" }),
     computeFamiliarity({ ...options, mode: "weighted" }),
   ]);
 
@@ -57,9 +57,9 @@ export async function computeUnified(
   console.log("Done.");
 
   return {
-    repoName: binary.repoName,
-    userName: binary.userName,
-    scoring: { binary, authorship, weighted },
+    repoName: committed.repoName,
+    userName: committed.userName,
+    scoring: { committed, codeCoverage, weighted },
     coverage,
     hotspot,
     hotspotTeamFamiliarity,

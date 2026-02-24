@@ -45,11 +45,11 @@ export async function computeFamiliarity(
 
   // Score based on mode
   switch (options.mode) {
-    case "binary":
+    case "committed":
       scoreBinary(tree, writtenFiles, expiredFiles);
       break;
 
-    case "authorship":
+    case "code-coverage":
       await scoreAuthorship(tree, gitClient, user);
       break;
 

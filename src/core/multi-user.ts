@@ -58,7 +58,7 @@ export async function computeMultiUser(
         ...options,
         user: userName,
         team: false,
-        teamCoverage: false,
+        contributorsPerFile: false,
       };
       const result = await computeFamiliarity(userOptions);
       results.push({ userName, result });

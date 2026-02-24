@@ -25,10 +25,10 @@ function formatPercent(score: number): string {
 
 function getModeLabel(mode: string): string {
   switch (mode) {
-    case "binary":
-      return "Binary mode";
-    case "authorship":
-      return "Authorship mode";
+    case "committed":
+      return "Committed mode";
+    case "code-coverage":
+      return "Code Coverage mode";
     case "weighted":
       return "Weighted mode";
     default:
@@ -93,7 +93,7 @@ export function renderMultiUserTerminal(result: MultiUserResult): void {
     const bar = makeBar(summary.overallScore);
     const pct = formatPercent(summary.overallScore);
 
-    if (mode === "binary") {
+    if (mode === "committed") {
       console.log(
         `  ${name} ${bar}  ${pct.padStart(4)} (${summary.writtenCount}/${totalFiles} files)`,
       );

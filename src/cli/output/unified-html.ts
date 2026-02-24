@@ -4,8 +4,10 @@ import type { UnifiedData } from "../../core/types.js";
 import { openBrowser } from "../../utils/open-browser.js";
 
 function generateUnifiedHTML(data: UnifiedData): string {
-  const scoringBinaryJson = JSON.stringify(data.scoring.binary.tree);
-  const scoringAuthorshipJson = JSON.stringify(data.scoring.authorship.tree);
+  const scoringCommittedJson = JSON.stringify(data.scoring.committed.tree);
+  const scoringCodeCoverageJson = JSON.stringify(
+    data.scoring.codeCoverage.tree,
+  );
   const scoringWeightedJson = JSON.stringify(data.scoring.weighted.tree);
   const coverageTreeJson = JSON.stringify(data.coverage.tree);
   const coverageRiskJson = JSON.stringify(data.coverage.riskFiles);
@@ -385,12 +387,12 @@ function generateUnifiedHTML(data: UnifiedData): string {
 <body>
 <div id="header">
   <h1>GitFamiliar \u2014 ${data.repoName}</h1>
-  <div class="info">${data.userName} | ${data.scoring.binary.totalFiles} files</div>
+  <div class="info">${data.userName} | ${data.scoring.committed.totalFiles} files</div>
 </div>
 
 <div id="tabs">
   <div class="tab active" onclick="switchTab('scoring')">Scoring</div>
-  <div class="tab" onclick="switchTab('coverage')">Coverage</div>
+  <div class="tab" onclick="switchTab('coverage')">Contributors</div>
   <div class="tab" onclick="switchTab('multiuser')">Multi-User</div>
   <div class="tab" onclick="switchTab('hotspots')">Hotspots</div>
 </div>
@@ -399,7 +401,7 @@ function generateUnifiedHTML(data: UnifiedData): string {
   Your personal familiarity with each file, based on Git history. Larger blocks = more lines of code. Color shows how well you know each file.
 </div>
 <div id="tab-desc-coverage" class="tab-desc">
-  Team knowledge distribution: how many people have contributed to each file. Low contributor count = high bus factor risk.
+  Contributors per file: how many people have committed to each file. Low contributor count = high bus factor risk.
 </div>
 <div id="tab-desc-multiuser" class="tab-desc">
   Compare familiarity scores across team members. Select a user to see the codebase colored by their knowledge.
@@ -409,9 +411,9 @@ function generateUnifiedHTML(data: UnifiedData): string {
 </div>
 
 <div id="scoring-controls" class="visible">
-  <button class="subtab active" onclick="switchScoringMode('binary')">Binary</button>
-  <button class="subtab" onclick="switchScoringMode('authorship')">Authorship</button>
-  <button class="subtab" onclick="switchScoringMode('weighted')">Weighted</button>
+  <button class="subtab active" data-mode="committed" onclick="switchScoringMode('committed')">Committed</button>
+  <button class="subtab" data-mode="code-coverage" onclick="switchScoringMode('code-coverage')">Code Coverage</button>
+  <button class="subtab" data-mode="weighted" onclick="switchScoringMode('weighted')">Weighted</button>
   <div id="weight-controls">
     <span>Blame:</span>
     <span class="weight-label" id="blame-label">50%</span>
@@ -431,13 +433,13 @@ function generateUnifiedHTML(data: UnifiedData): string {
 
 <div id="hotspot-controls">
   <label>Mode:</label>
-  <button class="subtab active" onclick="switchHotspotMode('personal')">Personal</button>
-  <button class="subtab" onclick="switchHotspotMode('team')">Team</button>
+  <button class="subtab active" data-mode="personal" onclick="switchHotspotMode('personal')">Personal</button>
+  <button class="subtab" data-mode="team" onclick="switchHotspotMode('team')">Team</button>
   <span class="sep-v"></span>
   <label>Scoring:</label>
-  <button class="subtab hs-scoring active" onclick="switchHotspotScoring('binary')">Binary</button>
-  <button class="subtab hs-scoring" onclick="switchHotspotScoring('authorship')">Authorship</button>
-  <button class="subtab hs-scoring" onclick="switchHotspotScoring('weighted')">Weighted</button>
+  <button class="subtab hs-scoring active" data-mode="committed" onclick="switchHotspotScoring('committed')">Committed</button>
+  <button class="subtab hs-scoring" data-mode="code-coverage" onclick="switchHotspotScoring('code-coverage')">Code Coverage</button>
+  <button class="subtab hs-scoring" data-mode="weighted" onclick="switchHotspotScoring('weighted')">Weighted</button>
 </div>
 
 <div id="breadcrumb"><span onclick="zoomTo('')">root</span></div>
@@ -487,8 +489,8 @@ function generateUnifiedHTML(data: UnifiedData): string {
 <script>
 // ── Data ──
 const scoringData = {
-  binary: ${scoringBinaryJson},
-  authorship: ${scoringAuthorshipJson},
+  committed: ${scoringCommittedJson},
+  'code-coverage': ${scoringCodeCoverageJson},
   weighted: ${scoringWeightedJson},
 };
 const coverageData = ${coverageTreeJson};
@@ -501,14 +503,14 @@ const multiUserSummaries = ${multiUserSummariesJson};
 
 // ── State ──
 let activeTab = 'scoring';
-let scoringMode = 'binary';
+let scoringMode = 'committed';
 let blameWeight = 0.5;
 let scoringPath = '';
 let coveragePath = '';
 let multiuserPath = '';
 let currentUser = 0;
 let hotspotMode = 'personal';
-let hotspotScoring = 'binary';
+let hotspotScoring = 'committed';
 const rendered = { scoring: false, coverage: false, hotspots: false, multiuser: false };
 
 // ── Hotspot recalculation utilities ──
@@ -523,8 +525,8 @@ function extractFlatScores(node) {
 }
 
 const personalScores = {
-  binary: extractFlatScores(scoringData.binary),
-  authorship: extractFlatScores(scoringData.authorship),
+  committed: extractFlatScores(scoringData.committed),
+  'code-coverage': extractFlatScores(scoringData['code-coverage']),
   weighted: extractFlatScores(scoringData.weighted),
 };
 
@@ -546,7 +548,7 @@ function recalculateHotspotData() {
 function switchHotspotMode(mode) {
   hotspotMode = mode;
   document.querySelectorAll('#hotspot-controls .subtab:not(.hs-scoring)').forEach(el => {
-    el.classList.toggle('active', el.textContent.toLowerCase() === mode);
+    el.classList.toggle('active', el.dataset.mode === mode);
   });
   // Disable scoring buttons in team mode
   const isTeam = mode === 'team';
@@ -561,7 +563,7 @@ function switchHotspotScoring(mode) {
   if (hotspotMode === 'team') return;
   hotspotScoring = mode;
   document.querySelectorAll('#hotspot-controls .hs-scoring').forEach(el => {
-    el.classList.toggle('active', el.textContent.toLowerCase() === mode);
+    el.classList.toggle('active', el.dataset.mode === mode);
   });
   renderHotspot();
   renderHotspotSidebar();
@@ -661,8 +663,8 @@ function truncateLabel(name, w, h) {
 
 // ── Tab switching ──
 const modeDescriptions = {
-  binary: 'Binary: Have you ever committed to this file? Yes (green) or No (red).',
-  authorship: 'Authorship: How much of the current code did you write? Based on git blame line ownership.',
+  committed: 'Committed: Have you ever committed to this file? Yes (green) or No (red).',
+  'code-coverage': 'Code Coverage: How much of the current code did you write? Based on git blame line ownership.',
   weighted: 'Weighted: Combines blame ownership and commit history with adjustable weights. Use the sliders to tune.',
 };
 
@@ -738,7 +740,7 @@ function switchScoringMode(mode) {
   scoringPath = '';
   updateBreadcrumb('');
   document.querySelectorAll('#scoring-controls .subtab').forEach(el => {
-    el.classList.toggle('active', el.textContent.toLowerCase() === mode);
+    el.classList.toggle('active', el.dataset.mode === mode);
   });
   document.getElementById('weight-controls').classList.toggle('visible', mode === 'weighted');
   document.getElementById('mode-desc-text').textContent = modeDescriptions[mode];

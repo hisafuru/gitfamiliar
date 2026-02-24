@@ -6,23 +6,32 @@ describe("parseOptions", () => {
 
   it("returns defaults when no options provided", () => {
     const result = parseOptions({}, repoPath);
-    expect(result.mode).toBe("binary");
+    expect(result.mode).toBe("committed");
     expect(result.html).toBe(false);
     expect(result.weights).toEqual({ blame: 0.5, commit: 0.5 });
     expect(result.expiration).toEqual({ policy: "never" });
     expect(result.repoPath).toBe(repoPath);
     expect(result.team).toBe(false);
-    expect(result.teamCoverage).toBe(false);
+    expect(result.contributorsPerFile).toBe(false);
     expect(result.hotspot).toBeUndefined();
     expect(result.user).toBeUndefined();
   });
 
   it("parses mode option", () => {
-    expect(parseOptions({ mode: "authorship" }, repoPath).mode).toBe(
-      "authorship",
+    expect(parseOptions({ mode: "committed" }, repoPath).mode).toBe(
+      "committed",
+    );
+    expect(parseOptions({ mode: "code-coverage" }, repoPath).mode).toBe(
+      "code-coverage",
     );
     expect(parseOptions({ mode: "weighted" }, repoPath).mode).toBe("weighted");
-    expect(parseOptions({ mode: "binary" }, repoPath).mode).toBe("binary");
+  });
+
+  it("accepts legacy mode aliases", () => {
+    expect(parseOptions({ mode: "binary" }, repoPath).mode).toBe("committed");
+    expect(parseOptions({ mode: "authorship" }, repoPath).mode).toBe(
+      "code-coverage",
+    );
   });
 
   it("throws on invalid mode", () => {
@@ -66,10 +75,22 @@ describe("parseOptions", () => {
     expect(parseOptions({ team: true }, repoPath).team).toBe(true);
   });
 
-  it("parses teamCoverage flag", () => {
-    expect(parseOptions({ teamCoverage: true }, repoPath).teamCoverage).toBe(
-      true,
-    );
+  it("parses contributorsPerFile flag", () => {
+    expect(
+      parseOptions({ contributorsPerFile: true }, repoPath).contributorsPerFile,
+    ).toBe(true);
+  });
+
+  it("accepts --contributors alias for contributorsPerFile", () => {
+    expect(
+      parseOptions({ contributors: true }, repoPath).contributorsPerFile,
+    ).toBe(true);
+  });
+
+  it("accepts legacy --team-coverage alias for contributorsPerFile", () => {
+    expect(
+      parseOptions({ teamCoverage: true }, repoPath).contributorsPerFile,
+    ).toBe(true);
   });
 
   it("parses hotspot as personal by default", () => {
@@ -82,9 +103,14 @@ describe("parseOptions", () => {
     expect(result.hotspot).toBe("team");
   });
 
-  it("parses window option", () => {
-    const result = parseOptions({ window: "30" }, repoPath);
-    expect(result.window).toBe(30);
+  it("parses since option", () => {
+    const result = parseOptions({ since: "30" }, repoPath);
+    expect(result.since).toBe(30);
+  });
+
+  it("accepts legacy --window alias for since", () => {
+    const result = parseOptions({ window: "60" }, repoPath);
+    expect(result.since).toBe(60);
   });
 
   it("parses expiration option", () => {
