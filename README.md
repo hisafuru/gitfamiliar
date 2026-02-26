@@ -12,6 +12,8 @@
 
 [Quick Start](#-quick-start) · [Scoring Modes](#-scoring-modes) · [Team Features](#-team-features) · [HTML Dashboard](#-html-dashboard) · [CLI Reference](#-cli-reference)
 
+![HTML Dashboard — Scoring tab](img/html_scoring.png)
+
 </div>
 
 ---
@@ -48,8 +50,6 @@ Overall: 22/31 files (68%)
     routes/              ██████████  100% (4/4 files)
     services/            ██████████  100% (3/3 files)
 ```
-
-![Terminal output](img/terminal.png)
 
 Use `--html` to generate an **interactive unified dashboard** in the browser:
 
@@ -216,8 +216,6 @@ gitfamiliar --html --mode weighted         # unified, weighted as default scorin
 | **Contributors** | D3 treemap + risk sidebar | Contributors per file — bus factor risk analysis |
 | **Team** | D3 treemap + user dropdown | Compare familiarity across all contributors |
 | **Hotspots** | D3 scatter plot + sidebar | High change frequency × low familiarity = risk |
-
-![HTML Dashboard — Scoring tab (Code Coverage mode)](img/html_scoring.png)
 
 ![HTML Dashboard — Hotspots tab](img/html_hotspot.png)
 
