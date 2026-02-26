@@ -20,6 +20,7 @@ export interface RawCliOptions {
   hotspot?: string;
   since?: string;
   window?: string; // deprecated alias
+  demo?: boolean;
 }
 
 export function parseOptions(raw: RawCliOptions, repoPath: string): CliOptions {
@@ -68,6 +69,7 @@ export function parseOptions(raw: RawCliOptions, repoPath: string): CliOptions {
       raw.contributorsPerFile || raw.contributors || raw.teamCoverage || false,
     hotspot,
     since: sinceDays,
+    demo: raw.demo || false,
   };
 }
 

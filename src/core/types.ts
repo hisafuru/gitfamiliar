@@ -26,6 +26,7 @@ export interface CliOptions {
   contributorsPerFile?: boolean;
   hotspot?: HotspotMode;
   since?: number; // days for hotspot analysis
+  demo?: boolean;
 }
 
 export interface UserIdentity {

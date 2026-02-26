@@ -117,4 +117,12 @@ describe("parseOptions", () => {
     const result = parseOptions({ expiration: "time:180d" }, repoPath);
     expect(result.expiration).toEqual({ policy: "time", duration: 180 });
   });
+
+  it("parses demo flag", () => {
+    expect(parseOptions({ demo: true }, repoPath).demo).toBe(true);
+  });
+
+  it("defaults demo to false", () => {
+    expect(parseOptions({}, repoPath).demo).toBe(false);
+  });
 });

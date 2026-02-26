@@ -393,7 +393,7 @@ function generateUnifiedHTML(data: UnifiedData): string {
 <div id="tabs">
   <div class="tab active" onclick="switchTab('scoring')">Scoring</div>
   <div class="tab" onclick="switchTab('coverage')">Contributors</div>
-  <div class="tab" onclick="switchTab('multiuser')">Multi-User</div>
+  <div class="tab" onclick="switchTab('multiuser')">Team</div>
   <div class="tab" onclick="switchTab('hotspots')">Hotspots</div>
 </div>
 
@@ -404,7 +404,7 @@ function generateUnifiedHTML(data: UnifiedData): string {
   Contributors per file: how many people have committed to each file. Low contributor count = high bus factor risk.
 </div>
 <div id="tab-desc-multiuser" class="tab-desc">
-  Compare familiarity scores across team members. Select a user to see the codebase colored by their knowledge.
+  Compare familiarity scores across the team. Select a user to see the codebase colored by their knowledge.
 </div>
 <div id="tab-desc-hotspots" class="tab-desc">
   Files that change frequently but are poorly understood. Top-left = danger zone (high change, low familiarity).

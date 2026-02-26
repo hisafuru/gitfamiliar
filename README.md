@@ -23,23 +23,33 @@ Built for engineers joining a new project, it gives you and your team an objecti
 
 ## Demo
 
+Try it instantly without a git repository:
+
+```bash
+npx gitfamiliar --demo              # terminal output
+npx gitfamiliar --demo --html       # interactive HTML dashboard
+npx gitfamiliar --demo --hotspot    # hotspot analysis
+npx gitfamiliar --demo --team       # team comparison
 ```
-$ npx gitfamiliar
 
-GitFamiliar — my-project (Binary mode)
+The demo uses a fictional project "acme-web-app" with 4 team members:
 
-Overall: 58/172 files (34%)
-
-  src/
-    auth/       ████████░░  80% (4/5 files)
-    api/        ███░░░░░░░  30% (6/20 files)
-    components/ █░░░░░░░░░  12% (3/25 files)
-    utils/      ██████████ 100% (8/8 files)
-  tests/        ░░░░░░░░░░   0% (0/14 files)
-  config/       ██████░░░░  60% (3/5 files)
-
-Written: 42 files
 ```
+$ npx gitfamiliar --demo
+
+GitFamiliar — acme-web-app (Committed mode)
+
+Overall: 22/31 files (68%)
+
+  .github/               ░░░░░░░░░░    0% (0/2 files)
+  frontend/              █░░░░░░░░░   15% (1/7 files)
+    components/          ░░░░░░░░░░    0% (0/4 files)
+  src/                   ██████████  100% (18/18 files)
+    routes/              ██████████  100% (4/4 files)
+    services/            ██████████  100% (3/3 files)
+```
+
+![Terminal output](img/terminal.png)
 
 Use `--html` to generate an **interactive unified dashboard** in the browser:
 
@@ -83,7 +93,7 @@ npm install -g gitfamiliar
 
 ## Scoring Modes
 
-### `binary` — default
+### `committed` — default
 
 > Best for: **New team members** tracking onboarding progress.
 
@@ -93,7 +103,7 @@ Files are "written" or "not written". A file counts as written if you have at le
 familiarity = written_files / total_files
 ```
 
-### `authorship`
+### `code-coverage`
 
 > Best for: **Tech leads** assessing code ownership and bus factor.
 
@@ -105,7 +115,7 @@ score(project) = sum(your_lines) / sum(all_lines)
 ```
 
 ```bash
-gitfamiliar --mode authorship
+gitfamiliar --mode code-coverage
 ```
 
 ### `weighted`
@@ -159,13 +169,13 @@ gitfamiliar --user "Alice" --user "Bob"   # specific users
 gitfamiliar --team                         # all contributors
 ```
 
-### Team Coverage Map
+### Contributors Per File
 
 Visualize bus factor — how many people know each part of the codebase:
 
 ```bash
-gitfamiliar --team-coverage
-gitfamiliar --team-coverage --html
+gitfamiliar --contributors-per-file
+gitfamiliar --contributors-per-file --html
 ```
 
 | Risk Level | Contributors | Meaning |
@@ -181,7 +191,7 @@ Find files that are frequently changed but poorly understood:
 ```bash
 gitfamiliar --hotspot                      # personal hotspots
 gitfamiliar --hotspot team                 # team hotspots
-gitfamiliar --hotspot --window 30          # last 30 days only
+gitfamiliar --hotspot --since 30           # last 30 days only
 gitfamiliar --hotspot --html               # scatter plot visualization
 ```
 
@@ -202,17 +212,21 @@ gitfamiliar --html --mode weighted         # unified, weighted as default scorin
 
 | Tab | Visualization | Description |
 |:---|:---|:---|
-| **Scoring** | D3 treemap + sub-tabs | Binary, Authorship, Weighted modes with real-time weight sliders |
-| **Coverage** | D3 treemap + risk sidebar | Team bus factor — how many people know each area |
-| **Multi-User** | D3 treemap + user dropdown | Compare familiarity across all contributors |
+| **Scoring** | D3 treemap + sub-tabs | Committed, Code Coverage, Weighted modes with real-time weight sliders |
+| **Contributors** | D3 treemap + risk sidebar | Contributors per file — bus factor risk analysis |
+| **Team** | D3 treemap + user dropdown | Compare familiarity across all contributors |
 | **Hotspots** | D3 scatter plot + sidebar | High change frequency × low familiarity = risk |
+
+![HTML Dashboard — Scoring tab (Code Coverage mode)](img/html_scoring.png)
+
+![HTML Dashboard — Hotspots tab](img/html_hotspot.png)
 
 ### Individual HTML Reports
 
 ```bash
 gitfamiliar --html --hotspot               # hotspot scatter plot only
-gitfamiliar --html --team-coverage         # coverage treemap only
-gitfamiliar --html --team                  # multi-user treemap only
+gitfamiliar --html --contributors-per-file # contributors treemap only
+gitfamiliar --html --team                  # team comparison treemap only
 gitfamiliar --html --user "Alice" --user "Bob"  # specific users comparison
 ```
 
@@ -255,17 +269,18 @@ third_party/
 Usage: gitfamiliar [options]
 
 Options:
-  -m, --mode <mode>          Scoring mode: binary | authorship | weighted (default: "binary")
-  -u, --user <user>          Git user name/email (repeatable for comparison)
-  -e, --expiration <policy>  Expiration: never | time:Nd | change:N% | combined:Nd:N%
-      --html                 Generate HTML report (alone = unified dashboard)
-  -w, --weights <w1,w2>      Weights for weighted mode (must sum to 1.0)
-      --team                 Compare all contributors
-      --team-coverage        Show team coverage map (bus factor analysis)
-      --hotspot [mode]       Hotspot analysis: personal (default) or team
-      --window <days>        Time window for hotspot analysis (default: 90)
-  -V, --version              Output version number
-  -h, --help                 Display help
+  -m, --mode <mode>              Scoring mode: committed | code-coverage | weighted (default: "committed")
+  -u, --user <user>              Git user name/email (repeatable for comparison)
+  -e, --expiration <policy>      Expiration: never | time:Nd | change:N% | combined:Nd:N%
+      --html                     Generate HTML report (alone = unified dashboard)
+  -w, --weights <w1,w2>          Weights for weighted mode (must sum to 1.0)
+      --team                     Compare all contributors
+      --contributors-per-file    Analyze contributors per file (bus factor)
+      --hotspot [mode]           Hotspot analysis: personal (default) or team
+      --since <days>             Hotspot analysis period in days (default: 90)
+      --demo                     Show demo with sample data (no git repo needed)
+  -V, --version                  Output version number
+  -h, --help                     Display help
 ```
 
 ---
@@ -276,7 +291,7 @@ Options:
 import { computeFamiliarity } from 'gitfamiliar';
 
 const result = await computeFamiliarity({
-  mode: 'binary',
+  mode: 'committed',
   expiration: { policy: 'never' },
   weights: { blame: 0.5, commit: 0.5 },
   html: false,

@@ -18,6 +18,13 @@ import { renderHotspotTerminal } from "./output/hotspot-terminal.js";
 import { generateAndOpenHotspotHTML } from "./output/hotspot-html.js";
 import { computeUnified } from "../core/unified.js";
 import { generateAndOpenUnifiedHTML } from "./output/unified-html.js";
+import {
+  getDemoFamiliarityResult,
+  getDemoHotspotResult,
+  getDemoCoverageResult,
+  getDemoMultiUserResult,
+  getDemoUnifiedData,
+} from "../core/demo.js";
 
 function collect(value: string, previous: string[]): string[] {
   return previous.concat([value]);
@@ -62,10 +69,67 @@ export function createProgram(): Command {
     .option("--hotspot [mode]", "Hotspot analysis: personal (default) or team")
     .option("--since <days>", "Hotspot analysis period in days (default: 90)")
     .option("--window <days>", "Deprecated alias for --since")
+    .option("--demo", "Show demo with sample data (no git repo needed)", false)
     .action(async (rawOptions) => {
       try {
         const repoPath = process.cwd();
         const options = parseOptions(rawOptions, repoPath);
+
+        // Route: demo mode (no git repo needed)
+        if (options.demo) {
+          const isMultiUserCheck =
+            options.team ||
+            (Array.isArray(options.user) && options.user.length > 1);
+
+          if (
+            options.html &&
+            !options.hotspot &&
+            !options.contributorsPerFile &&
+            !isMultiUserCheck
+          ) {
+            const data = getDemoUnifiedData();
+            await generateAndOpenUnifiedHTML(data, repoPath);
+            return;
+          }
+
+          if (options.hotspot) {
+            const result = getDemoHotspotResult();
+            if (options.html) {
+              await generateAndOpenHotspotHTML(result, repoPath);
+            } else {
+              renderHotspotTerminal(result);
+            }
+            return;
+          }
+
+          if (options.contributorsPerFile) {
+            const result = getDemoCoverageResult();
+            if (options.html) {
+              await generateAndOpenCoverageHTML(result, repoPath);
+            } else {
+              renderCoverageTerminal(result);
+            }
+            return;
+          }
+
+          if (isMultiUserCheck) {
+            const result = getDemoMultiUserResult();
+            if (options.html) {
+              await generateAndOpenMultiUserHTML(result, repoPath);
+            } else {
+              renderMultiUserTerminal(result);
+            }
+            return;
+          }
+
+          const result = getDemoFamiliarityResult(options.mode);
+          if (options.html) {
+            await generateAndOpenHTML(result, repoPath);
+          } else {
+            renderTerminal(result);
+          }
+          return;
+        }
 
         // Route: unified HTML dashboard (--html without specific feature flags)
         const isMultiUserCheck =
