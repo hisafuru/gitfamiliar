@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { classifyHotspotRisk } from "../../../src/core/hotspot.js";
+import { classifyHotspotRisk } from "../../../src/core/risk.js";
 
 describe("classifyHotspotRisk", () => {
   it("classifies risk >= 0.6 as critical", () => {

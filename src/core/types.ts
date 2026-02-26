@@ -75,6 +75,27 @@ export const DEFAULT_EXPIRATION: ExpirationConfig = {
   policy: "never",
 };
 
+// ── Shared Constants ──
+
+/** Hotspot risk thresholds (risk score 0-1) */
+export const HOTSPOT_RISK_THRESHOLDS = {
+  critical: 0.6,
+  high: 0.4,
+  medium: 0.2,
+} as const;
+
+/** Contributor count thresholds for bus factor risk classification */
+export const COVERAGE_RISK_THRESHOLDS = {
+  risk: 1, // <= 1 contributor
+  moderate: 3, // <= 3 contributors
+} as const;
+
+/** Default time window for hotspot analysis (days) */
+export const DEFAULT_HOTSPOT_WINDOW = 90;
+
+/** Bus factor target: fraction of files that must be covered */
+export const BUS_FACTOR_TARGET = 0.5;
+
 // ── Multi-User Comparison Types ──
 
 export type RiskLevel = "safe" | "moderate" | "risk";

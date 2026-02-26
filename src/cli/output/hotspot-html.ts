@@ -2,6 +2,7 @@ import { writeFileSync } from "node:fs";
 import { join } from "node:path";
 import type { HotspotResult } from "../../core/types.js";
 import { openBrowser } from "../../utils/open-browser.js";
+import { getBaseStyles, getSidebarStyles } from "./html-shared.js";
 
 function generateHotspotHTML(result: HotspotResult): string {
   // Only include files with activity for the scatter plot
@@ -28,33 +29,11 @@ function generateHotspotHTML(result: HotspotResult): string {
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>GitFamiliar \u2014 ${modeLabel} \u2014 ${result.repoName}</title>
 <style>
-  * { margin: 0; padding: 0; box-sizing: border-box; }
-  body {
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    background: #1a1a2e;
-    color: #e0e0e0;
-    overflow: hidden;
-  }
-  #header {
-    padding: 16px 24px;
-    background: #16213e;
-    border-bottom: 1px solid #0f3460;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-  }
-  #header h1 { font-size: 18px; color: #e94560; }
-  #header .info { font-size: 14px; color: #a0a0a0; }
-  #main { display: flex; height: calc(100vh - 60px); }
+  ${getBaseStyles()}
+  ${getSidebarStyles()}
+  #main { height: calc(100vh - 60px); }
+  #sidebar { width: 320px; }
   #chart { flex: 1; position: relative; }
-  #sidebar {
-    width: 320px;
-    background: #16213e;
-    border-left: 1px solid #0f3460;
-    overflow-y: auto;
-    padding: 16px;
-  }
-  #sidebar h3 { font-size: 14px; margin-bottom: 12px; color: #e94560; }
   .hotspot-item {
     padding: 8px 0;
     border-bottom: 1px solid #0f3460;
@@ -74,19 +53,6 @@ function generateHotspotHTML(result: HotspotResult): string {
   .risk-high { background: #f07040; color: white; }
   .risk-medium { background: #f5a623; color: black; }
   .risk-low { background: #27ae60; color: white; }
-  #tooltip {
-    position: absolute;
-    pointer-events: none;
-    background: rgba(22, 33, 62, 0.95);
-    border: 1px solid #0f3460;
-    border-radius: 6px;
-    padding: 10px 14px;
-    font-size: 13px;
-    line-height: 1.6;
-    display: none;
-    z-index: 100;
-    max-width: 350px;
-  }
   #zone-labels { position: absolute; pointer-events: none; }
   .zone-label {
     position: absolute;

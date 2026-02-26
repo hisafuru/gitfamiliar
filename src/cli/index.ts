@@ -74,120 +74,59 @@ export function createProgram(): Command {
       try {
         const repoPath = process.cwd();
         const options = parseOptions(rawOptions, repoPath);
-
-        // Route: demo mode (no git repo needed)
-        if (options.demo) {
-          const isMultiUserCheck =
-            options.team ||
-            (Array.isArray(options.user) && options.user.length > 1);
-
-          if (
-            options.html &&
-            !options.hotspot &&
-            !options.contributorsPerFile &&
-            !isMultiUserCheck
-          ) {
-            const data = getDemoUnifiedData();
-            await generateAndOpenUnifiedHTML(data, repoPath);
-            return;
-          }
-
-          if (options.hotspot) {
-            const result = getDemoHotspotResult();
-            if (options.html) {
-              await generateAndOpenHotspotHTML(result, repoPath);
-            } else {
-              renderHotspotTerminal(result);
-            }
-            return;
-          }
-
-          if (options.contributorsPerFile) {
-            const result = getDemoCoverageResult();
-            if (options.html) {
-              await generateAndOpenCoverageHTML(result, repoPath);
-            } else {
-              renderCoverageTerminal(result);
-            }
-            return;
-          }
-
-          if (isMultiUserCheck) {
-            const result = getDemoMultiUserResult();
-            if (options.html) {
-              await generateAndOpenMultiUserHTML(result, repoPath);
-            } else {
-              renderMultiUserTerminal(result);
-            }
-            return;
-          }
-
-          const result = getDemoFamiliarityResult(options.mode);
-          if (options.html) {
-            await generateAndOpenHTML(result, repoPath);
-          } else {
-            renderTerminal(result);
-          }
-          return;
-        }
-
-        // Route: unified HTML dashboard (--html without specific feature flags)
-        const isMultiUserCheck =
+        const isDemo = options.demo;
+        const isMultiUser =
           options.team ||
           (Array.isArray(options.user) && options.user.length > 1);
+
+        // Determine which feature to run and compute data
         if (
           options.html &&
           !options.hotspot &&
           !options.contributorsPerFile &&
-          !isMultiUserCheck
+          !isMultiUser
         ) {
-          const data = await computeUnified(options);
+          // Unified HTML dashboard
+          const data = isDemo
+            ? getDemoUnifiedData()
+            : await computeUnified(options);
           await generateAndOpenUnifiedHTML(data, repoPath);
-          return;
-        }
-
-        // Route: hotspot analysis
-        if (options.hotspot) {
-          const result = await computeHotspots(options);
+        } else if (options.hotspot) {
+          const result = isDemo
+            ? getDemoHotspotResult()
+            : await computeHotspots(options);
           if (options.html) {
             await generateAndOpenHotspotHTML(result, repoPath);
           } else {
             renderHotspotTerminal(result);
           }
-          return;
-        }
-
-        // Route: contributors per file
-        if (options.contributorsPerFile) {
-          const result = await computeTeamCoverage(options);
+        } else if (options.contributorsPerFile) {
+          const result = isDemo
+            ? getDemoCoverageResult()
+            : await computeTeamCoverage(options);
           if (options.html) {
             await generateAndOpenCoverageHTML(result, repoPath);
           } else {
             renderCoverageTerminal(result);
           }
-          return;
-        }
-
-        // Route: multi-user comparison
-        const isMultiUser =
-          options.team ||
-          (Array.isArray(options.user) && options.user.length > 1);
-        if (isMultiUser) {
-          const result = await computeMultiUser(options);
+        } else if (isMultiUser) {
+          const result = isDemo
+            ? getDemoMultiUserResult()
+            : await computeMultiUser(options);
           if (options.html) {
             await generateAndOpenMultiUserHTML(result, repoPath);
           } else {
             renderMultiUserTerminal(result);
           }
-          return;
-        }
-
-        // Route: single user (existing flow)
-        const result = await computeFamiliarity(options);
-        if (options.html) {
-          await generateAndOpenHTML(result, repoPath);
         } else {
-          renderTerminal(result);
+          const result = isDemo
+            ? getDemoFamiliarityResult(options.mode)
+            : await computeFamiliarity(options);
+          if (options.html) {
+            await generateAndOpenHTML(result, repoPath);
+          } else {
+            renderTerminal(result);
+          }
         }
       } catch (error: any) {
         console.error(`Error: ${error.message}`);

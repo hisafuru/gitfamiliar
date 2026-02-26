@@ -2,9 +2,10 @@ import type {
   CliOptions,
   HotspotFileScore,
   HotspotResult,
-  HotspotRiskLevel,
   FileScore,
 } from "./types.js";
+import { DEFAULT_HOTSPOT_WINDOW } from "./types.js";
+import { classifyHotspotRisk } from "./risk.js";
 import { GitClient } from "../git/client.js";
 import { createFilter } from "../filter/ignore.js";
 import { buildFileTree, walkFiles } from "./file-tree.js";
@@ -14,10 +15,7 @@ import {
   bulkGetFileContributors,
   getAllContributors,
 } from "../git/contributors.js";
-import { processBatch } from "../utils/batch.js";
 import { resolveUser } from "../git/identity.js";
-
-const DEFAULT_WINDOW = 90;
 
 export async function computeHotspots(
   options: CliOptions,
@@ -32,7 +30,7 @@ export async function computeHotspots(
   const repoRoot = await gitClient.getRepoRoot();
   const filter = createFilter(repoRoot);
   const tree = await buildFileTree(gitClient, filter);
-  const timeWindow = options.since || DEFAULT_WINDOW;
+  const timeWindow = options.since || DEFAULT_HOTSPOT_WINDOW;
   const isTeamMode = options.hotspot === "team";
 
   // Get all tracked files
@@ -129,13 +127,6 @@ export async function computeHotspots(
     timeWindow,
     summary,
   };
-}
-
-export function classifyHotspotRisk(risk: number): HotspotRiskLevel {
-  if (risk >= 0.6) return "critical";
-  if (risk >= 0.4) return "high";
-  if (risk >= 0.2) return "medium";
-  return "low";
 }
 
 /**

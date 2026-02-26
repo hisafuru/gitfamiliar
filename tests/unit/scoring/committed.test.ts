@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { scoreBinary } from "../../../src/scoring/binary.js";
+import { scoreCommitted } from "../../../src/scoring/committed.js";
 import type { FolderScore, FileScore } from "../../../src/core/types.js";
 
 function makeFile(path: string, lines: number = 100): FileScore {
@@ -17,11 +17,11 @@ function makeTree(files: FileScore[]): FolderScore {
   };
 }
 
-describe("scoreBinary", () => {
+describe("scoreCommitted", () => {
   it("scores all files as unread when no commits", () => {
     const files = [makeFile("a.ts"), makeFile("b.ts")];
     const tree = makeTree(files);
-    scoreBinary(tree, new Set());
+    scoreCommitted(tree, new Set());
 
     expect(tree.score).toBe(0);
     expect(tree.readCount).toBe(0);
@@ -32,7 +32,7 @@ describe("scoreBinary", () => {
   it("scores written files as read", () => {
     const files = [makeFile("a.ts"), makeFile("b.ts"), makeFile("c.ts")];
     const tree = makeTree(files);
-    scoreBinary(tree, new Set(["a.ts", "b.ts"]));
+    scoreCommitted(tree, new Set(["a.ts", "b.ts"]));
 
     expect(tree.score).toBeCloseTo(2 / 3, 5);
     expect(tree.readCount).toBe(2);
@@ -44,7 +44,7 @@ describe("scoreBinary", () => {
   it("handles expired files", () => {
     const files = [makeFile("a.ts"), makeFile("b.ts")];
     const tree = makeTree(files);
-    scoreBinary(tree, new Set(["a.ts", "b.ts"]), new Set(["a.ts"]));
+    scoreCommitted(tree, new Set(["a.ts", "b.ts"]), new Set(["a.ts"]));
 
     expect(files[0].score).toBe(0);
     expect(files[0].isExpired).toBe(true);

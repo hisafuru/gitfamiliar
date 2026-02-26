@@ -1,38 +1,7 @@
 import chalk from "chalk";
 import type { FamiliarityResult } from "../../core/familiarity.js";
 import type { FolderScore, FileScore, TreeNode } from "../../core/types.js";
-
-const BAR_WIDTH = 10;
-const FILLED_CHAR = "\u2588"; // █
-const EMPTY_CHAR = "\u2591"; // ░
-
-function makeBar(score: number): string {
-  const filled = Math.round(score * BAR_WIDTH);
-  const empty = BAR_WIDTH - filled;
-  const bar = FILLED_CHAR.repeat(filled) + EMPTY_CHAR.repeat(empty);
-
-  if (score >= 0.8) return chalk.green(bar);
-  if (score >= 0.5) return chalk.yellow(bar);
-  if (score > 0) return chalk.red(bar);
-  return chalk.gray(bar);
-}
-
-function formatPercent(score: number): string {
-  return `${Math.round(score * 100)}%`;
-}
-
-function getModeLabel(mode: string): string {
-  switch (mode) {
-    case "committed":
-      return "Committed mode";
-    case "code-coverage":
-      return "Code Coverage mode";
-    case "weighted":
-      return "Weighted mode";
-    default:
-      return mode;
-  }
-}
+import { makeBar, formatPercent, getModeLabel } from "./terminal-utils.js";
 
 const NAME_COLUMN_WIDTH = 24; // total width for indent + folder name
 

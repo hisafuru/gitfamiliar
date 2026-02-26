@@ -1,7 +1,7 @@
-import type { GitClient } from '../git/client.js';
-import type { FileFilter } from '../filter/ignore.js';
-import type { FolderScore, FileScore, TreeNode } from './types.js';
-import { countLines } from '../utils/line-count.js';
+import type { GitClient } from "../git/client.js";
+import type { FileFilter } from "../filter/ignore.js";
+import type { FolderScore, FileScore, TreeNode } from "./types.js";
+import { countLines } from "../utils/line-count.js";
 
 /**
  * Build a hierarchical file tree from git-tracked files.
@@ -16,7 +16,7 @@ export async function buildFileTree(
 
   // Build flat file scores
   const fileScores: FileScore[] = filteredFiles.map((filePath) => ({
-    type: 'file' as const,
+    type: "file" as const,
     path: filePath,
     lines: countLines(repoRoot, filePath),
     score: 0,
@@ -28,8 +28,8 @@ export async function buildFileTree(
 
 function buildTreeFromFiles(files: FileScore[]): FolderScore {
   const root: FolderScore = {
-    type: 'folder',
-    path: '',
+    type: "folder",
+    path: "",
     lines: 0,
     score: 0,
     fileCount: 0,
@@ -38,11 +38,11 @@ function buildTreeFromFiles(files: FileScore[]): FolderScore {
 
   // Group files by directory path
   const folderMap = new Map<string, FolderScore>();
-  folderMap.set('', root);
+  folderMap.set("", root);
 
   for (const file of files) {
-    const parts = file.path.split('/');
-    let currentPath = '';
+    const parts = file.path.split("/");
+    let currentPath = "";
 
     // Ensure all ancestor folders exist
     for (let i = 0; i < parts.length - 1; i++) {
@@ -51,7 +51,7 @@ function buildTreeFromFiles(files: FileScore[]): FolderScore {
 
       if (!folderMap.has(currentPath)) {
         const folder: FolderScore = {
-          type: 'folder',
+          type: "folder",
           path: currentPath,
           lines: 0,
           score: 0,
@@ -67,7 +67,7 @@ function buildTreeFromFiles(files: FileScore[]): FolderScore {
     }
 
     // Add file to its parent folder
-    const parentPath = parts.length > 1 ? parts.slice(0, -1).join('/') : '';
+    const parentPath = parts.length > 1 ? parts.slice(0, -1).join("/") : "";
     const parent = folderMap.get(parentPath)!;
     parent.children.push(file);
   }
@@ -83,7 +83,7 @@ function computeAggregates(node: FolderScore): void {
   let totalFiles = 0;
 
   for (const child of node.children) {
-    if (child.type === 'file') {
+    if (child.type === "file") {
       totalLines += child.lines;
       totalFiles += 1;
     } else {
@@ -104,7 +104,7 @@ export function walkFiles(
   node: TreeNode,
   visitor: (file: FileScore) => void,
 ): void {
-  if (node.type === 'file') {
+  if (node.type === "file") {
     visitor(node);
   } else {
     for (const child of node.children) {
@@ -120,7 +120,7 @@ export function walkFiles(
  */
 export function recomputeFolderScores(
   node: FolderScore,
-  mode: 'binary' | 'continuous',
+  mode: "committed" | "continuous",
 ): void {
   let readCount = 0;
   let totalFiles = 0;
@@ -128,7 +128,7 @@ export function recomputeFolderScores(
   let totalLines = 0;
 
   for (const child of node.children) {
-    if (child.type === 'file') {
+    if (child.type === "file") {
       totalFiles += 1;
       totalLines += child.lines;
       weightedScore += child.score * child.lines;
@@ -145,7 +145,7 @@ export function recomputeFolderScores(
   node.fileCount = totalFiles;
   node.readCount = readCount;
 
-  if (mode === 'binary') {
+  if (mode === "committed") {
     node.score = totalFiles > 0 ? readCount / totalFiles : 0;
   } else {
     node.score = totalLines > 0 ? weightedScore / totalLines : 0;

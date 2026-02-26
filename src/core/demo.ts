@@ -6,12 +6,10 @@ import type {
   TreeNode,
   HotspotResult,
   HotspotFileScore,
-  HotspotRiskLevel,
   TeamCoverageResult,
   CoverageFolderScore,
   CoverageFileScore,
   CoverageTreeNode,
-  RiskLevel,
   MultiUserResult,
   MultiUserFolderScore,
   MultiUserFileScore,
@@ -21,6 +19,8 @@ import type {
   UserSummary,
   UnifiedData,
 } from "./types.js";
+import { DEFAULT_HOTSPOT_WINDOW } from "./types.js";
+import { classifyHotspotRisk, classifyCoverageRisk } from "./risk.js";
 
 // ── Constants ──
 
@@ -349,52 +349,66 @@ const DEMO_FILES: DemoFile[] = [
 
 // ── Tree building helpers ──
 
-function groupByDirectory(
-  files: { path: string }[],
-): Map<string, { path: string }[]> {
-  const groups = new Map<string, { path: string }[]>();
-  for (const file of files) {
-    const lastSlash = file.path.lastIndexOf("/");
-    const dir = lastSlash >= 0 ? file.path.substring(0, lastSlash) : "";
-    if (!groups.has(dir)) groups.set(dir, []);
-    groups.get(dir)!.push(file);
-  }
-  return groups;
-}
-
-function buildScoringTree(
-  files: FileScore[],
-  mode: ScoringMode,
-): FolderScore {
-  // Build directory structure
+/**
+ * Generic bottom-up tree builder for demo data.
+ * Discovers directories from file paths, sorts deepest-first,
+ * and calls `createFolder` to produce each folder node.
+ */
+function buildDemoTree<TFile extends { path: string }, TFolder>(
+  files: TFile[],
+  createFolder: (path: string, children: Array<TFile | TFolder>) => TFolder,
+): TFolder {
+  // Discover all directories
   const allDirs = new Set<string>();
-  for (const f of files) {
-    const parts = f.path.split("/");
+  for (const file of files) {
+    const parts = file.path.split("/");
     for (let i = 1; i < parts.length; i++) {
       allDirs.add(parts.slice(0, i).join("/"));
     }
   }
 
-  // Build leaf-to-root: first create file nodes by directory, then folders
-  const dirChildren = new Map<string, TreeNode[]>();
-
-  // Add files to their parent directories
-  for (const f of files) {
-    const lastSlash = f.path.lastIndexOf("/");
-    const parentDir = lastSlash >= 0 ? f.path.substring(0, lastSlash) : "";
+  // Assign files to their parent directories
+  const dirChildren = new Map<string, Array<TFile | TFolder>>();
+  for (const file of files) {
+    const lastSlash = file.path.lastIndexOf("/");
+    const parentDir = lastSlash >= 0 ? file.path.substring(0, lastSlash) : "";
     if (!dirChildren.has(parentDir)) dirChildren.set(parentDir, []);
-    dirChildren.get(parentDir)!.push(f);
+    dirChildren.get(parentDir)!.push(file);
   }
 
-  // Sort directories deepest first
+  // Build folder nodes bottom-up (deepest directories first)
   const sortedDirs = [...allDirs].sort(
     (a, b) => b.split("/").length - a.split("/").length,
   );
 
-  // Build folder nodes bottom-up
-  const folderNodes = new Map<string, FolderScore>();
   for (const dir of sortedDirs) {
     const children = dirChildren.get(dir) || [];
+    const folder = createFolder(dir, children);
+
+    // Add this folder to its parent
+    const lastSlash = dir.lastIndexOf("/");
+    const parentDir = lastSlash >= 0 ? dir.substring(0, lastSlash) : "";
+    if (!dirChildren.has(parentDir)) dirChildren.set(parentDir, []);
+    dirChildren.get(parentDir)!.push(folder);
+  }
+
+  // Build root
+  const rootChildren = dirChildren.get("") || [];
+  return createFolder("", rootChildren);
+}
+
+/** Sort children: folders first, then alphabetically by path */
+function sortChildren<T extends { type: string; path: string }>(
+  children: T[],
+): T[] {
+  return [...children].sort((a, b) => {
+    if (a.type !== b.type) return a.type === "folder" ? -1 : 1;
+    return a.path.localeCompare(b.path);
+  });
+}
+
+function buildScoringTree(files: FileScore[], mode: ScoringMode): FolderScore {
+  return buildDemoTree<FileScore, FolderScore>(files, (path, children) => {
     let totalLines = 0;
     let weightedScore = 0;
     let fileCount = 0;
@@ -414,59 +428,15 @@ function buildScoringTree(
 
     const folder: FolderScore = {
       type: "folder",
-      path: dir,
+      path,
       lines: totalLines,
       score: totalLines > 0 ? weightedScore / totalLines : 0,
       fileCount,
-      children: children.sort((a, b) => {
-        if (a.type !== b.type) return a.type === "folder" ? -1 : 1;
-        return a.path.localeCompare(b.path);
-      }),
+      children: sortChildren(children),
     };
     if (mode === "committed") folder.readCount = readCount;
-
-    folderNodes.set(dir, folder);
-
-    // Add this folder to its parent
-    const lastSlash = dir.lastIndexOf("/");
-    const parentDir = lastSlash >= 0 ? dir.substring(0, lastSlash) : "";
-    if (!dirChildren.has(parentDir)) dirChildren.set(parentDir, []);
-    dirChildren.get(parentDir)!.push(folder);
-  }
-
-  // Build root
-  const rootChildren = dirChildren.get("") || [];
-  let totalLines = 0;
-  let weightedScore = 0;
-  let fileCount = 0;
-  let readCount = 0;
-
-  for (const child of rootChildren) {
-    totalLines += child.lines;
-    weightedScore += child.lines * child.score;
-    if (child.type === "file") {
-      fileCount++;
-      if (child.score > 0) readCount++;
-    } else {
-      fileCount += (child as FolderScore).fileCount;
-      readCount += (child as FolderScore).readCount || 0;
-    }
-  }
-
-  const root: FolderScore = {
-    type: "folder",
-    path: "",
-    lines: totalLines,
-    score: totalLines > 0 ? weightedScore / totalLines : 0,
-    fileCount,
-    children: rootChildren.sort((a, b) => {
-      if (a.type !== b.type) return a.type === "folder" ? -1 : 1;
-      return a.path.localeCompare(b.path);
-    }),
-  };
-  if (mode === "committed") root.readCount = readCount;
-
-  return root;
+    return folder;
+  });
 }
 
 // ── Familiarity ──
@@ -475,27 +445,27 @@ export function getDemoFamiliarityResult(
   mode?: ScoringMode,
 ): FamiliarityResult {
   const m = mode || "committed";
-  const files: FileScore[] = DEMO_FILES.map((f) => {
+  const files: FileScore[] = DEMO_FILES.map((file) => {
     const base: FileScore = {
       type: "file",
-      path: f.path,
-      lines: f.lines,
+      path: file.path,
+      lines: file.lines,
       score: 0,
     };
 
     switch (m) {
       case "committed":
-        base.score = f.written.alice ? 1 : 0;
-        base.isWritten = f.written.alice;
+        base.score = file.written.alice ? 1 : 0;
+        base.isWritten = file.written.alice;
         break;
       case "code-coverage":
-        base.score = f.familiarity.alice;
+        base.score = file.familiarity.alice;
         break;
       case "weighted":
-        base.blameScore = f.familiarity.alice;
+        base.blameScore = file.familiarity.alice;
         base.commitScore = Math.min(
           1,
-          f.written.alice ? f.familiarity.alice * 0.9 + 0.1 : 0,
+          file.written.alice ? file.familiarity.alice * 0.9 + 0.1 : 0,
         );
         base.score = 0.5 * base.blameScore + 0.5 * base.commitScore;
         break;
@@ -505,7 +475,7 @@ export function getDemoFamiliarityResult(
   });
 
   const tree = buildScoringTree(files, m);
-  const writtenCount = DEMO_FILES.filter((f) => f.written.alice).length;
+  const writtenCount = DEMO_FILES.filter((file) => file.written.alice).length;
 
   return {
     tree,
@@ -519,170 +489,94 @@ export function getDemoFamiliarityResult(
 
 // ── Hotspot ──
 
-function classifyHotspotRisk(risk: number): HotspotRiskLevel {
-  if (risk >= 0.6) return "critical";
-  if (risk >= 0.4) return "high";
-  if (risk >= 0.2) return "medium";
-  return "low";
-}
-
 export function getDemoHotspotResult(): HotspotResult {
-  const maxFreq = Math.max(...DEMO_FILES.map((f) => f.changeFrequency));
+  const maxFreq = Math.max(...DEMO_FILES.map((file) => file.changeFrequency));
 
-  const files: HotspotFileScore[] = DEMO_FILES.map((f) => {
-    const normalizedFreq =
-      maxFreq > 0 ? f.changeFrequency / maxFreq : 0;
-    const familiarity = f.familiarity.alice;
+  const files: HotspotFileScore[] = DEMO_FILES.map((file) => {
+    const normalizedFreq = maxFreq > 0 ? file.changeFrequency / maxFreq : 0;
+    const familiarity = file.familiarity.alice;
     const risk = normalizedFreq * (1 - familiarity);
     return {
-      path: f.path,
-      lines: f.lines,
+      path: file.path,
+      lines: file.lines,
       familiarity,
-      changeFrequency: f.changeFrequency,
-      lastChanged: f.lastChanged ? new Date(f.lastChanged) : null,
+      changeFrequency: file.changeFrequency,
+      lastChanged: file.lastChanged ? new Date(file.lastChanged) : null,
       risk,
       riskLevel: classifyHotspotRisk(risk),
     };
   }).sort((a, b) => b.risk - a.risk);
 
   const summary = { critical: 0, high: 0, medium: 0, low: 0 };
-  for (const f of files) summary[f.riskLevel]++;
+  for (const hotspot of files) summary[hotspot.riskLevel]++;
 
   return {
     files,
     repoName: REPO_NAME,
     userName: ALICE.name,
     hotspotMode: "personal",
-    timeWindow: 90,
+    timeWindow: DEFAULT_HOTSPOT_WINDOW,
     summary,
   };
 }
 
 // ── Coverage (contributors per file) ──
 
-function classifyCoverageRisk(contributorCount: number): RiskLevel {
-  if (contributorCount <= 1) return "risk";
-  if (contributorCount <= 3) return "moderate";
-  return "safe";
-}
-
 function buildCoverageTree(files: CoverageFileScore[]): CoverageFolderScore {
-  const allDirs = new Set<string>();
-  for (const f of files) {
-    const parts = f.path.split("/");
-    for (let i = 1; i < parts.length; i++) {
-      allDirs.add(parts.slice(0, i).join("/"));
-    }
-  }
+  return buildDemoTree<CoverageFileScore, CoverageFolderScore>(
+    files,
+    (path, children) => {
+      let totalLines = 0;
+      let fileCount = 0;
+      let totalContributors = 0;
 
-  const dirChildren = new Map<string, CoverageTreeNode[]>();
-
-  for (const f of files) {
-    const lastSlash = f.path.lastIndexOf("/");
-    const parentDir = lastSlash >= 0 ? f.path.substring(0, lastSlash) : "";
-    if (!dirChildren.has(parentDir)) dirChildren.set(parentDir, []);
-    dirChildren.get(parentDir)!.push(f);
-  }
-
-  const sortedDirs = [...allDirs].sort(
-    (a, b) => b.split("/").length - a.split("/").length,
-  );
-
-  for (const dir of sortedDirs) {
-    const children = dirChildren.get(dir) || [];
-    let totalLines = 0;
-    let fileCount = 0;
-    let totalContributors = 0;
-
-    for (const child of children) {
-      totalLines += child.lines;
-      if (child.type === "file") {
-        fileCount++;
-        totalContributors += child.contributorCount;
-      } else {
-        const folder = child as CoverageFolderScore;
-        fileCount += folder.fileCount;
-        totalContributors += folder.avgContributors * folder.fileCount;
+      for (const child of children) {
+        totalLines += child.lines;
+        if (child.type === "file") {
+          fileCount++;
+          totalContributors += child.contributorCount;
+        } else {
+          const folderChild = child as CoverageFolderScore;
+          fileCount += folderChild.fileCount;
+          totalContributors +=
+            folderChild.avgContributors * folderChild.fileCount;
+        }
       }
-    }
 
-    const avgContributors =
-      fileCount > 0
-        ? Math.round((totalContributors / fileCount) * 10) / 10
-        : 0;
-    const busFactor = avgContributors >= 4 ? 3 : avgContributors >= 2 ? 2 : 1;
+      const avgContributors =
+        fileCount > 0
+          ? Math.round((totalContributors / fileCount) * 10) / 10
+          : 0;
+      const busFactor = avgContributors >= 4 ? 3 : avgContributors >= 2 ? 2 : 1;
 
-    const folder: CoverageFolderScore = {
-      type: "folder",
-      path: dir,
-      lines: totalLines,
-      fileCount,
-      avgContributors,
-      busFactor,
-      riskLevel: busFactor <= 1 ? "risk" : busFactor <= 2 ? "moderate" : "safe",
-      children: children.sort((a, b) => {
-        if (a.type !== b.type) return a.type === "folder" ? -1 : 1;
-        return a.path.localeCompare(b.path);
-      }),
-    };
-
-    const lastSlash = dir.lastIndexOf("/");
-    const parentDir = lastSlash >= 0 ? dir.substring(0, lastSlash) : "";
-    if (!dirChildren.has(parentDir)) dirChildren.set(parentDir, []);
-    dirChildren.get(parentDir)!.push(folder);
-  }
-
-  // Build root
-  const rootChildren = dirChildren.get("") || [];
-  let totalLines = 0;
-  let fileCount = 0;
-  let totalContributors = 0;
-
-  for (const child of rootChildren) {
-    totalLines += child.lines;
-    if (child.type === "file") {
-      fileCount++;
-      totalContributors += (child as CoverageFileScore).contributorCount;
-    } else {
-      const folder = child as CoverageFolderScore;
-      fileCount += folder.fileCount;
-      totalContributors += folder.avgContributors * folder.fileCount;
-    }
-  }
-
-  const avgContributors =
-    fileCount > 0
-      ? Math.round((totalContributors / fileCount) * 10) / 10
-      : 0;
-
-  return {
-    type: "folder",
-    path: "",
-    lines: totalLines,
-    fileCount,
-    avgContributors,
-    busFactor: 1,
-    riskLevel: "risk",
-    children: rootChildren.sort((a, b) => {
-      if (a.type !== b.type) return a.type === "folder" ? -1 : 1;
-      return a.path.localeCompare(b.path);
-    }),
-  };
+      return {
+        type: "folder",
+        path,
+        lines: totalLines,
+        fileCount,
+        avgContributors,
+        busFactor,
+        riskLevel:
+          busFactor <= 1 ? "risk" : busFactor <= 2 ? "moderate" : "safe",
+        children: sortChildren(children),
+      };
+    },
+  );
 }
 
 export function getDemoCoverageResult(): TeamCoverageResult {
-  const coverageFiles: CoverageFileScore[] = DEMO_FILES.map((f) => ({
+  const coverageFiles: CoverageFileScore[] = DEMO_FILES.map((file) => ({
     type: "file" as const,
-    path: f.path,
-    lines: f.lines,
-    contributorCount: f.contributors.length,
-    contributors: f.contributors,
-    riskLevel: classifyCoverageRisk(f.contributors.length),
+    path: file.path,
+    lines: file.lines,
+    contributorCount: file.contributors.length,
+    contributors: file.contributors,
+    riskLevel: classifyCoverageRisk(file.contributors.length),
   }));
 
   const tree = buildCoverageTree(coverageFiles);
   const riskFiles = coverageFiles
-    .filter((f) => f.contributorCount <= 1)
+    .filter((file) => file.contributorCount <= 1)
     .sort((a, b) => a.contributorCount - b.contributorCount);
 
   return {
@@ -697,143 +591,76 @@ export function getDemoCoverageResult(): TeamCoverageResult {
 
 // ── Multi-User ──
 
-function buildMultiUserTree(
-  files: MultiUserFileScore[],
-): MultiUserFolderScore {
-  const allDirs = new Set<string>();
-  for (const f of files) {
-    const parts = f.path.split("/");
-    for (let i = 1; i < parts.length; i++) {
-      allDirs.add(parts.slice(0, i).join("/"));
-    }
-  }
+function buildMultiUserTree(files: MultiUserFileScore[]): MultiUserFolderScore {
+  return buildDemoTree<MultiUserFileScore, MultiUserFolderScore>(
+    files,
+    (path, children) => {
+      let totalLines = 0;
+      let fileCount = 0;
+      const userTotals = USERS.map(() => 0);
 
-  const dirChildren = new Map<string, MultiUserTreeNode[]>();
-
-  for (const f of files) {
-    const lastSlash = f.path.lastIndexOf("/");
-    const parentDir = lastSlash >= 0 ? f.path.substring(0, lastSlash) : "";
-    if (!dirChildren.has(parentDir)) dirChildren.set(parentDir, []);
-    dirChildren.get(parentDir)!.push(f);
-  }
-
-  const sortedDirs = [...allDirs].sort(
-    (a, b) => b.split("/").length - a.split("/").length,
-  );
-
-  for (const dir of sortedDirs) {
-    const children = dirChildren.get(dir) || [];
-    let totalLines = 0;
-    let fileCount = 0;
-    const userTotals = USERS.map(() => 0);
-
-    for (const child of children) {
-      totalLines += child.lines;
-      if (child.type === "file") {
-        fileCount++;
-        const mf = child as MultiUserFileScore;
-        mf.userScores.forEach((us, i) => {
-          userTotals[i] += us.score * mf.lines;
-        });
-      } else {
-        const folder = child as MultiUserFolderScore;
-        fileCount += folder.fileCount;
-        folder.userScores.forEach((us, i) => {
-          userTotals[i] += us.score * folder.lines;
-        });
+      for (const child of children) {
+        totalLines += child.lines;
+        if (child.type === "file") {
+          fileCount++;
+          const fileNode = child as MultiUserFileScore;
+          fileNode.userScores.forEach((userScore, i) => {
+            userTotals[i] += userScore.score * fileNode.lines;
+          });
+        } else {
+          const folderNode = child as MultiUserFolderScore;
+          fileCount += folderNode.fileCount;
+          folderNode.userScores.forEach((userScore, i) => {
+            userTotals[i] += userScore.score * folderNode.lines;
+          });
+        }
       }
-    }
 
-    const userScores: UserScore[] = USERS.map((user, i) => ({
-      user,
-      score: totalLines > 0 ? userTotals[i] / totalLines : 0,
-    }));
+      const userScores: UserScore[] = USERS.map((user, i) => ({
+        user,
+        score: totalLines > 0 ? userTotals[i] / totalLines : 0,
+      }));
 
-    const avgScore =
-      userScores.reduce((s, u) => s + u.score, 0) / userScores.length;
+      const avgScore =
+        userScores.reduce((sum, entry) => sum + entry.score, 0) /
+        userScores.length;
 
-    const folder: MultiUserFolderScore = {
-      type: "folder",
-      path: dir,
-      lines: totalLines,
-      score: avgScore,
-      fileCount,
-      userScores,
-      children: children.sort((a, b) => {
-        if (a.type !== b.type) return a.type === "folder" ? -1 : 1;
-        return a.path.localeCompare(b.path);
-      }),
-    };
-
-    const lastSlash = dir.lastIndexOf("/");
-    const parentDir = lastSlash >= 0 ? dir.substring(0, lastSlash) : "";
-    if (!dirChildren.has(parentDir)) dirChildren.set(parentDir, []);
-    dirChildren.get(parentDir)!.push(folder);
-  }
-
-  // Build root
-  const rootChildren = dirChildren.get("") || [];
-  let totalLines = 0;
-  let fileCount = 0;
-  const userTotals = USERS.map(() => 0);
-
-  for (const child of rootChildren) {
-    totalLines += child.lines;
-    if (child.type === "file") {
-      fileCount++;
-      const mf = child as MultiUserFileScore;
-      mf.userScores.forEach((us, i) => {
-        userTotals[i] += us.score * mf.lines;
-      });
-    } else {
-      const folder = child as MultiUserFolderScore;
-      fileCount += folder.fileCount;
-      folder.userScores.forEach((us, i) => {
-        userTotals[i] += us.score * folder.lines;
-      });
-    }
-  }
-
-  const userScores: UserScore[] = USERS.map((user, i) => ({
-    user,
-    score: totalLines > 0 ? userTotals[i] / totalLines : 0,
-  }));
-
-  const avgScore =
-    userScores.reduce((s, u) => s + u.score, 0) / userScores.length;
-
-  return {
-    type: "folder",
-    path: "",
-    lines: totalLines,
-    score: avgScore,
-    fileCount,
-    userScores,
-    children: rootChildren.sort((a, b) => {
-      if (a.type !== b.type) return a.type === "folder" ? -1 : 1;
-      return a.path.localeCompare(b.path);
-    }),
-  };
+      return {
+        type: "folder",
+        path,
+        lines: totalLines,
+        score: avgScore,
+        fileCount,
+        userScores,
+        children: sortChildren(children),
+      };
+    },
+  );
 }
 
 export function getDemoMultiUserResult(): MultiUserResult {
-  const files: MultiUserFileScore[] = DEMO_FILES.map((f) => {
+  const files: MultiUserFileScore[] = DEMO_FILES.map((file) => {
     const scores = [
-      f.familiarity.alice,
-      f.familiarity.bob,
-      f.familiarity.charlie,
-      f.familiarity.diana,
+      file.familiarity.alice,
+      file.familiarity.bob,
+      file.familiarity.charlie,
+      file.familiarity.diana,
     ];
     const userScores: UserScore[] = USERS.map((user, i) => ({
       user,
       score: scores[i],
-      isWritten: [f.written.alice, f.written.bob, f.written.charlie, f.written.diana][i],
+      isWritten: [
+        file.written.alice,
+        file.written.bob,
+        file.written.charlie,
+        file.written.diana,
+      ][i],
     }));
 
     return {
       type: "file" as const,
-      path: f.path,
-      lines: f.lines,
+      path: file.path,
+      lines: file.lines,
       score: scores.reduce((a, b) => a + b, 0) / scores.length,
       userScores,
     };
@@ -843,10 +670,10 @@ export function getDemoMultiUserResult(): MultiUserResult {
 
   const userSummaries: UserSummary[] = USERS.map((user, i) => {
     const key = (["alice", "bob", "charlie", "diana"] as const)[i];
-    const writtenCount = DEMO_FILES.filter((f) => f.written[key]).length;
-    const totalLines = DEMO_FILES.reduce((s, f) => s + f.lines, 0);
+    const writtenCount = DEMO_FILES.filter((file) => file.written[key]).length;
+    const totalLines = DEMO_FILES.reduce((sum, file) => sum + file.lines, 0);
     const weightedScore = DEMO_FILES.reduce(
-      (s, f) => s + f.familiarity[key] * f.lines,
+      (sum, file) => sum + file.familiarity[key] * file.lines,
       0,
     );
     return {
@@ -871,14 +698,14 @@ export function getDemoMultiUserResult(): MultiUserResult {
 export function getDemoUnifiedData(): UnifiedData {
   // Team familiarity: average all 4 users' code-coverage scores per file
   const hotspotTeamFamiliarity: Record<string, number> = {};
-  for (const f of DEMO_FILES) {
+  for (const file of DEMO_FILES) {
     const avg =
-      (f.familiarity.alice +
-        f.familiarity.bob +
-        f.familiarity.charlie +
-        f.familiarity.diana) /
+      (file.familiarity.alice +
+        file.familiarity.bob +
+        file.familiarity.charlie +
+        file.familiarity.diana) /
       4;
-    hotspotTeamFamiliarity[f.path] = avg;
+    hotspotTeamFamiliarity[file.path] = avg;
   }
 
   return {

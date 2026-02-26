@@ -60,7 +60,7 @@ describe("walkFiles", () => {
 });
 
 describe("recomputeFolderScores", () => {
-  describe("binary mode", () => {
+  describe("committed mode", () => {
     it("computes score as readCount / fileCount", () => {
       const files = [
         makeFile("a.ts", 100, 1),
@@ -70,7 +70,7 @@ describe("recomputeFolderScores", () => {
       const tree = makeFolder("", files);
       tree.fileCount = 3;
 
-      recomputeFolderScores(tree, "binary");
+      recomputeFolderScores(tree, "committed");
       expect(tree.score).toBeCloseTo(2 / 3, 5);
       expect(tree.readCount).toBe(2);
       expect(tree.fileCount).toBe(3);
@@ -83,7 +83,7 @@ describe("recomputeFolderScores", () => {
       ]);
       const tree = makeFolder("", [inner, makeFile("c.ts", 100, 0)]);
 
-      recomputeFolderScores(tree, "binary");
+      recomputeFolderScores(tree, "committed");
       expect(inner.score).toBeCloseTo(1.0, 5);
       expect(inner.readCount).toBe(2);
       expect(tree.score).toBeCloseTo(2 / 3, 5);
@@ -93,7 +93,7 @@ describe("recomputeFolderScores", () => {
 
     it("returns 0 for empty folder", () => {
       const tree = makeFolder("", []);
-      recomputeFolderScores(tree, "binary");
+      recomputeFolderScores(tree, "committed");
       expect(tree.score).toBe(0);
       expect(tree.fileCount).toBe(0);
     });

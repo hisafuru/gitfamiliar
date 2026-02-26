@@ -3,13 +3,17 @@ import type {
   CoverageFileScore,
   CoverageFolderScore,
   CoverageTreeNode,
-  RiskLevel,
   TeamCoverageResult,
 } from "./types.js";
+import { BUS_FACTOR_TARGET } from "./types.js";
+import { classifyCoverageRisk } from "./risk.js";
 import { GitClient } from "../git/client.js";
 import { createFilter } from "../filter/ignore.js";
 import { buildFileTree, walkFiles } from "./file-tree.js";
-import { bulkGetFileContributors, getAllContributors } from "../git/contributors.js";
+import {
+  bulkGetFileContributors,
+  getAllContributors,
+} from "../git/contributors.js";
 
 export async function computeTeamCoverage(
   options: CliOptions,
@@ -30,7 +34,10 @@ export async function computeTeamCoverage(
   walkFiles(tree, (f) => trackedFiles.add(f.path));
 
   // Bulk get contributors for all files
-  const fileContributors = await bulkGetFileContributors(gitClient, trackedFiles);
+  const fileContributors = await bulkGetFileContributors(
+    gitClient,
+    trackedFiles,
+  );
   const allContributors = await getAllContributors(gitClient);
 
   // Build coverage tree
@@ -55,12 +62,6 @@ export async function computeTeamCoverage(
   };
 }
 
-function classifyRisk(contributorCount: number): RiskLevel {
-  if (contributorCount <= 1) return "risk";
-  if (contributorCount <= 3) return "moderate";
-  return "safe";
-}
-
 function buildCoverageTree(
   node: import("./types.js").FolderScore,
   fileContributors: Map<string, Set<string>>,
@@ -77,7 +78,7 @@ function buildCoverageTree(
         lines: child.lines,
         contributorCount: names.length,
         contributors: names,
-        riskLevel: classifyRisk(names.length),
+        riskLevel: classifyCoverageRisk(names.length),
       });
     } else {
       children.push(buildCoverageTree(child, fileContributors));
@@ -86,12 +87,28 @@ function buildCoverageTree(
 
   // Compute folder aggregates
   const fileScores: CoverageFileScore[] = [];
-  walkCoverageFiles({ type: "folder", path: "", lines: 0, fileCount: 0, avgContributors: 0, busFactor: 0, riskLevel: "safe", children }, (f) => {
-    fileScores.push(f);
-  });
+  walkCoverageFiles(
+    {
+      type: "folder",
+      path: "",
+      lines: 0,
+      fileCount: 0,
+      avgContributors: 0,
+      busFactor: 0,
+      riskLevel: "safe",
+      children,
+    },
+    (f) => {
+      fileScores.push(f);
+    },
+  );
 
-  const totalContributors = fileScores.reduce((sum, f) => sum + f.contributorCount, 0);
-  const avgContributors = fileScores.length > 0 ? totalContributors / fileScores.length : 0;
+  const totalContributors = fileScores.reduce(
+    (sum, f) => sum + f.contributorCount,
+    0,
+  );
+  const avgContributors =
+    fileScores.length > 0 ? totalContributors / fileScores.length : 0;
 
   // Calculate bus factor for this folder's files
   const folderFileContributors = new Map<string, Set<string>>();
@@ -107,7 +124,7 @@ function buildCoverageTree(
     fileCount: node.fileCount,
     avgContributors: Math.round(avgContributors * 10) / 10,
     busFactor,
-    riskLevel: classifyRisk(busFactor),
+    riskLevel: classifyCoverageRisk(busFactor),
     children,
   };
 }
@@ -135,7 +152,7 @@ export function calculateBusFactor(
   const totalFiles = fileContributors.size;
   if (totalFiles === 0) return 0;
 
-  const target = Math.ceil(totalFiles * 0.5);
+  const target = Math.ceil(totalFiles * BUS_FACTOR_TARGET);
 
   // Count files per contributor
   const contributorFiles = new Map<string, Set<string>>();

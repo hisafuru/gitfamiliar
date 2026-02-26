@@ -4,8 +4,8 @@ import { resolveUser } from "../git/identity.js";
 import { createFilter } from "../filter/ignore.js";
 import { buildFileTree, walkFiles } from "./file-tree.js";
 import { getFilesCommittedByUser } from "../git/log.js";
-import { scoreBinary } from "../scoring/binary.js";
-import { scoreAuthorship } from "../scoring/authorship.js";
+import { scoreCommitted } from "../scoring/committed.js";
+import { scoreCodeCoverage } from "../scoring/code-coverage.js";
 import { scoreWeighted } from "../scoring/weighted.js";
 import { getExpiredFiles } from "../scoring/expiration.js";
 
@@ -46,11 +46,11 @@ export async function computeFamiliarity(
   // Score based on mode
   switch (options.mode) {
     case "committed":
-      scoreBinary(tree, writtenFiles, expiredFiles);
+      scoreCommitted(tree, writtenFiles, expiredFiles);
       break;
 
     case "code-coverage":
-      await scoreAuthorship(tree, gitClient, user);
+      await scoreCodeCoverage(tree, gitClient, user);
       break;
 
     case "weighted":

@@ -5,10 +5,10 @@ import { walkFiles, recomputeFolderScores } from "../core/file-tree.js";
 import { processBatch } from "../utils/batch.js";
 
 /**
- * Score files by authorship (git blame-based).
+ * Score files by code coverage (git blame-based).
  * score(file) = blame_lines(user) / total_lines(file)
  */
-export async function scoreAuthorship(
+export async function scoreCodeCoverage(
   tree: FolderScore,
   gitClient: GitClient,
   user: UserIdentity,

@@ -2,6 +2,12 @@ import { writeFileSync } from "node:fs";
 import { join } from "node:path";
 import type { TeamCoverageResult } from "../../core/types.js";
 import { openBrowser } from "../../utils/open-browser.js";
+import {
+  getBaseStyles,
+  getBreadcrumbStyles,
+  getSidebarStyles,
+  getTreemapUtilsScript,
+} from "./html-shared.js";
 
 function generateCoverageHTML(result: TeamCoverageResult): string {
   const dataJson = JSON.stringify(result.tree);
@@ -14,42 +20,9 @@ function generateCoverageHTML(result: TeamCoverageResult): string {
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>GitFamiliar \u2014 Team Coverage \u2014 ${result.repoName}</title>
 <style>
-  * { margin: 0; padding: 0; box-sizing: border-box; }
-  body {
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    background: #1a1a2e;
-    color: #e0e0e0;
-    overflow: hidden;
-  }
-  #header {
-    padding: 16px 24px;
-    background: #16213e;
-    border-bottom: 1px solid #0f3460;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-  }
-  #header h1 { font-size: 18px; color: #e94560; }
-  #header .info { font-size: 14px; color: #a0a0a0; }
-  #breadcrumb {
-    padding: 8px 24px;
-    background: #16213e;
-    font-size: 13px;
-    border-bottom: 1px solid #0f3460;
-  }
-  #breadcrumb span { cursor: pointer; color: #5eadf7; }
-  #breadcrumb span:hover { text-decoration: underline; }
-  #breadcrumb .sep { color: #666; margin: 0 4px; }
-  #main { display: flex; height: calc(100vh - 90px); }
-  #treemap { flex: 1; }
-  #sidebar {
-    width: 300px;
-    background: #16213e;
-    border-left: 1px solid #0f3460;
-    overflow-y: auto;
-    padding: 16px;
-  }
-  #sidebar h3 { font-size: 14px; margin-bottom: 12px; color: #e94560; }
+  ${getBaseStyles()}
+  ${getBreadcrumbStyles()}
+  ${getSidebarStyles()}
   #sidebar .risk-file {
     padding: 6px 0;
     border-bottom: 1px solid #0f3460;
@@ -57,19 +30,7 @@ function generateCoverageHTML(result: TeamCoverageResult): string {
   }
   #sidebar .risk-file .path { color: #e0e0e0; word-break: break-all; }
   #sidebar .risk-file .meta { color: #888; margin-top: 2px; }
-  #tooltip {
-    position: absolute;
-    pointer-events: none;
-    background: rgba(22, 33, 62, 0.95);
-    border: 1px solid #0f3460;
-    border-radius: 6px;
-    padding: 10px 14px;
-    font-size: 13px;
-    line-height: 1.6;
-    display: none;
-    z-index: 100;
-    max-width: 320px;
-  }
+  #treemap { flex: 1; }
   #legend {
     position: absolute;
     bottom: 16px;
@@ -126,27 +87,7 @@ function folderColor(riskLevel) {
   }
 }
 
-function findNode(node, path) {
-  if (node.path === path) return node;
-  if (node.children) {
-    for (const child of node.children) {
-      const found = findNode(child, path);
-      if (found) return found;
-    }
-  }
-  return null;
-}
-
-function buildHierarchy(node) {
-  if (node.type === 'file') {
-    return { name: node.path.split('/').pop(), data: node, value: Math.max(1, node.lines) };
-  }
-  return {
-    name: node.path.split('/').pop() || node.path,
-    data: node,
-    children: (node.children || []).map(c => buildHierarchy(c)),
-  };
-}
+${getTreemapUtilsScript()}
 
 function render() {
   const container = document.getElementById('treemap');
@@ -228,15 +169,7 @@ function render() {
     .attr('font-size', d => d.children ? '11px' : '10px')
     .attr('font-weight', d => d.children ? 'bold' : 'normal')
     .style('pointer-events', 'none')
-    .text(d => {
-      const w = d.x1 - d.x0;
-      const h = d.y1 - d.y0;
-      const name = d.data.name || '';
-      if (w < 36 || h < 18) return '';
-      const maxChars = Math.floor((w - 8) / 6.5);
-      if (name.length > maxChars) return name.slice(0, maxChars - 1) + '\\u2026';
-      return name;
-    });
+    .text(d => truncateLabel(d.data.name || '', d.x1 - d.x0, d.y1 - d.y0));
 }
 
 function showTooltip(data, event) {
@@ -261,22 +194,6 @@ function showTooltip(data, event) {
   tooltip.style.top = (event.pageY - 14) + 'px';
 }
 
-function zoomTo(path) {
-  currentPath = path;
-  const el = document.getElementById('breadcrumb');
-  const parts = path ? path.split('/') : [];
-  let html = '<span onclick="zoomTo(\\'\\')">root</span>';
-  let accumulated = '';
-  for (const part of parts) {
-    accumulated = accumulated ? accumulated + '/' + part : part;
-    const p = accumulated;
-    html += '<span class="sep">/</span><span onclick="zoomTo(\\'' + p + '\\')">' + part + '</span>';
-  }
-  el.innerHTML = html;
-  render();
-}
-
-// Render risk sidebar
 function renderRiskSidebar() {
   const container = document.getElementById('risk-list');
   if (riskFiles.length === 0) {

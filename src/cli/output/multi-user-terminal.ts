@@ -4,37 +4,9 @@ import type {
   MultiUserFolderScore,
   UserScore,
 } from "../../core/types.js";
+import { makeBar, formatPercent, getModeLabel } from "./terminal-utils.js";
 
 const BAR_WIDTH = 20;
-const FILLED_CHAR = "\u2588";
-const EMPTY_CHAR = "\u2591";
-
-function makeBar(score: number, width: number = BAR_WIDTH): string {
-  const filled = Math.round(score * width);
-  const empty = width - filled;
-  const bar = FILLED_CHAR.repeat(filled) + EMPTY_CHAR.repeat(empty);
-  if (score >= 0.8) return chalk.green(bar);
-  if (score >= 0.5) return chalk.yellow(bar);
-  if (score > 0) return chalk.red(bar);
-  return chalk.gray(bar);
-}
-
-function formatPercent(score: number): string {
-  return `${Math.round(score * 100)}%`;
-}
-
-function getModeLabel(mode: string): string {
-  switch (mode) {
-    case "committed":
-      return "Committed mode";
-    case "code-coverage":
-      return "Code Coverage mode";
-    case "weighted":
-      return "Weighted mode";
-    default:
-      return mode;
-  }
-}
 
 function truncateName(name: string, maxLen: number): string {
   if (name.length <= maxLen) return name;
@@ -90,7 +62,7 @@ export function renderMultiUserTerminal(result: MultiUserResult): void {
   console.log(chalk.bold("Overall:"));
   for (const summary of userSummaries) {
     const name = truncateName(summary.user.name, 14).padEnd(14);
-    const bar = makeBar(summary.overallScore);
+    const bar = makeBar(summary.overallScore, BAR_WIDTH);
     const pct = formatPercent(summary.overallScore);
 
     if (mode === "committed") {

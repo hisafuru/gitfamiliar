@@ -2,9 +2,9 @@ import type { FolderScore } from "../core/types.js";
 import { walkFiles, recomputeFolderScores } from "../core/file-tree.js";
 
 /**
- * Score files in binary mode (written / not written).
+ * Score files in committed mode (written / not written).
  */
-export function scoreBinary(
+export function scoreCommitted(
   tree: FolderScore,
   writtenFiles: Set<string>,
   expiredFiles?: Set<string>,
@@ -24,5 +24,5 @@ export function scoreBinary(
     file.score = isWritten ? 1 : 0;
   });
 
-  recomputeFolderScores(tree, "binary");
+  recomputeFolderScores(tree, "committed");
 }
