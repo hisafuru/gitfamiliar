@@ -318,12 +318,6 @@ npm run build
 npm test
 ```
 
-## Roadmap
-
-- [ ] Dependency Awareness — factor in understanding of imported files
-- [ ] VS Code Extension — see familiarity scores inline in the editor
-- [ ] README Badge — Codecov-style badge for your project README
-
 ## License
 
 [MIT](LICENSE)
